@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/auth_intent.dart';
 import '../../core/supabase_providers.dart';
 import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
 
-/// Which door the user came through. Both send the same email OTP — Supabase
-/// creates the account on first code — so the only real difference is where
-/// they land afterwards.
+/// Which door the user came through.
 enum _Mode { signIn, registerPurohit }
 
-/// Email OTP, not SMS.
+/// Password first, emailed code second.
 ///
-/// India's TRAI DLT regime requires every transactional SMS sender to register
-/// a header and template with a telecom operator — weeks of paperwork and a
-/// registered business entity. Email OTP needs neither and works today. The
-/// call is isolated here so swapping in phone OTP later touches one file.
+/// The project runs on Supabase's default email provider, which refuses
+/// template edits on the free tier — so the magic-link mail carries a link and
+/// never a {{ .Token }}. That made the code path unusable for everyone, and the
+/// default provider also rate-limits hard (429 over_email_send_rate_limit after
+/// a couple of sends an hour). Passwords need no mail at all, so they are the
+/// primary route until custom SMTP is configured; the code path stays as a
+/// fallback so nothing is lost when it starts working again.
 class SignInPage extends ConsumerStatefulWidget {
   const SignInPage({super.key});
 
@@ -27,9 +29,13 @@ class SignInPage extends ConsumerStatefulWidget {
 
 class _SignInPageState extends ConsumerState<SignInPage> {
   final _email = TextEditingController();
+  final _password = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
   _Mode _mode = _Mode.signIn;
-  bool _sending = false;
+  bool _useCode = false;
+  bool _obscure = true;
+  bool _busy = false;
   String? _error;
 
   bool get _isRegister => _mode == _Mode.registerPurohit;
@@ -37,6 +43,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   @override
   void dispose() {
     _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -49,34 +56,114 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     });
   }
 
-  Future<void> _send() async {
-    if (!_formKey.currentState!.validate()) return;
+  /// Remembered across the round-trip so onboarding preselects the purohit
+  /// role and lands them on /register-purohit instead of the jobs feed.
+  void _rememberIntent() =>
+      AuthIntent.remember(_isRegister ? UserRole.purohit : null);
 
+  bool _begin() {
+    if (!_formKey.currentState!.validate()) return false;
     if (!supabaseReady) {
       setState(() => _error = 'Supabase is not configured in this build.');
-      return;
+      return false;
     }
-
+    FocusScope.of(context).unfocus();
     setState(() {
-      _sending = true;
+      _busy = true;
       _error = null;
     });
+    return true;
+  }
 
+  /// Sends the emailed code. Kept for when custom SMTP exists.
+  Future<void> _sendCode() async {
+    if (!_begin()) return;
     final email = _email.text.trim();
     try {
       await supabase.auth.signInWithOtp(email: email);
-      // Remembered across the OTP hop: onboarding preselects the purohit role
-      // and VerifyOtpPage routes an already-onboarded user straight to
-      // /register-purohit instead of dropping them on the jobs feed.
-      AuthIntent.remember(_isRegister ? UserRole.purohit : null);
+      _rememberIntent();
       if (!mounted) return;
       context.push('/verify?email=${Uri.encodeComponent(email)}');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _signInWithPassword() async {
+    if (!_begin()) return;
+    try {
+      await supabase.auth.signInWithPassword(
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+      _rememberIntent();
+      if (!mounted) return;
+      // The router redirect owns where we land: a brand new account goes to
+      // /onboarding, an established one to /jobs.
+      context.go('/');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createAccount() async {
+    if (!_begin()) return;
+    try {
+      final res = await supabase.auth.signUp(
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+      _rememberIntent();
+      if (!mounted) return;
+      if (res.session == null) {
+        // Only happens if email confirmation gets switched back on.
+        setState(() => _error =
+            'Account created. Confirm your email address, then sign in.');
+        return;
+      }
+      context.go('/');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  VoidCallback get _primaryAction {
+    if (_useCode) return _sendCode;
+    return _isRegister ? _createAccount : _signInWithPassword;
+  }
+
+  String get _primaryLabel {
+    if (_useCode) return _isRegister ? 'Continue as a purohit' : 'Email me a code';
+    return _isRegister ? 'Create purohit account' : 'Sign in';
+  }
+
+  String get _helperText {
+    if (_useCode) {
+      return _isRegister
+          ? 'We will email you a 6-digit code, then walk you through your purohit profile.'
+          : 'We will email you a 6-digit code.';
+    }
+    return _isRegister
+        ? 'Pick a password of at least 8 characters. You can add your experience and certificate next.'
+        : 'Use the password you set when you created your account.';
   }
 
   @override
@@ -143,10 +230,10 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                         ),
                         SizedBox(height: Gap.sm),
                         Text(
-                          'Enter your email to get a code, then tell us about your '
-                          'experience and add a Gurukul certificate or guru '
-                          'reference. An admin reviews it before your listing goes '
-                          'live — you can browse in the meantime.',
+                          'Create an account, then tell us about your experience '
+                          'and add a Gurukul certificate or guru reference. An '
+                          'admin reviews it before your listing goes live — you '
+                          'can browse in the meantime.',
                           style: TextStyle(
                             fontSize: 12.5,
                             color: AppColors.inkMuted,
@@ -167,7 +254,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.username],
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(hintText: 'you@example.com'),
                   validator: (v) {
                     final value = (v ?? '').trim();
@@ -177,14 +265,53 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     }
                     return null;
                   },
-                  onFieldSubmitted: (_) => _send(),
+                  onFieldSubmitted: (_) {
+                    if (_useCode) _primaryAction();
+                  },
                 ),
+                if (!_useCode) ...[
+                  const SizedBox(height: Gap.lg),
+                  const Text(
+                    'Password',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  TextFormField(
+                    controller: _password,
+                    obscureText: _obscure,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    autofillHints: [
+                      _isRegister
+                          ? AutofillHints.newPassword
+                          : AutofillHints.password,
+                    ],
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      hintText: _isRegister ? 'At least 8 characters' : 'Your password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          size: 20,
+                        ),
+                        tooltip: _obscure ? 'Show password' : 'Hide password',
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                    validator: (v) {
+                      final value = v ?? '';
+                      if (value.isEmpty) return 'Enter your password';
+                      if (_isRegister && value.length < 8) {
+                        return 'Use at least 8 characters';
+                      }
+                      return null;
+                    },
+                    onFieldSubmitted: (_) => _primaryAction(),
+                  ),
+                ],
                 const SizedBox(height: Gap.md),
                 Text(
-                  _isRegister
-                      ? 'We will email you a 6-digit code, then walk you through '
-                          'your purohit profile. No password to remember.'
-                      : 'We will email you a 6-digit code. No password to remember.',
+                  _helperText,
                   style: const TextStyle(
                     fontSize: 12.5,
                     color: AppColors.inkFaint,
@@ -200,17 +327,33 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                 ],
                 const SizedBox(height: Gap.xl),
                 FilledButton(
-                  onPressed: _sending ? null : _send,
-                  child: _sending
+                  onPressed: _busy ? null : _primaryAction,
+                  child: _busy
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white),
                         )
-                      : Text(_isRegister ? 'Continue as a purohit' : 'Sign in'),
+                      : Text(_primaryLabel),
                 ),
-                const SizedBox(height: Gap.md),
+                const SizedBox(height: Gap.xs),
+                Center(
+                  child: TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                              _useCode = !_useCode;
+                              _password.clear();
+                              _error = null;
+                            }),
+                    child: Text(
+                      _useCode ? 'Use a password instead' : 'Email me a code instead',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.sm),
                 OutlinedButton(
                   onPressed: () => context.go('/browse'),
                   child: const Text('Browse ceremonies without signing in'),
