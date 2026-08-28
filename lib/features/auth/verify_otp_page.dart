@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/auth_intent.dart';
 import '../../core/session.dart';
 import '../../core/supabase_providers.dart';
+import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
 
 class VerifyOtpPage extends ConsumerStatefulWidget {
@@ -48,6 +50,17 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
       );
       await ref.read(sessionProvider.notifier).refresh();
       if (!mounted) return;
+      // An already-onboarded user who came through "Register as a purohit"
+      // would otherwise be dumped on the jobs feed with no way to reach the
+      // registration form. Brand-new users still fall through to onboarding,
+      // which consumes the same intent to preselect the role.
+      final wantsPurohit = AuthIntent.peek() == UserRole.purohit;
+      final ready = ref.read(sessionProvider).status == SessionStatus.ready;
+      if (wantsPurohit && ready) {
+        AuthIntent.remember(null);
+        context.go('/register-purohit');
+        return;
+      }
       // The router redirect decides where to land: onboarding if there is no
       // profiles row yet, otherwise straight into the app.
       context.go('/');
