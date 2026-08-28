@@ -197,3 +197,236 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
     );
   }
 }
+
+
+/// The multi-select sibling of [PickerField], used for "Languages you conduct
+/// ceremonies in".
+///
+/// It exists for the same reason [PickerField] does — see the note at the top
+/// of this file about `DropdownButtonFormField` — plus one more: Flutter has no
+/// stock multi-select control at all, and a row of FilterChips for ~37
+/// languages would push the rest of the form off the screen. A searchable sheet
+/// keeps the field one line tall no matter how many items are selected.
+class MultiPickerField<T> extends StatelessWidget {
+  const MultiPickerField({
+    super.key,
+    required this.label,
+    required this.items,
+    required this.selected,
+    required this.labelOf,
+    required this.onChanged,
+    this.hint,
+    this.errorText,
+    this.enabled = true,
+  });
+
+  final String label;
+  final String? hint;
+
+  /// Rendered by [InputDecorator] so a "pick at least one" message lines up
+  /// with the validator messages on the surrounding TextFormFields.
+  final String? errorText;
+
+  final List<T> items;
+  final Set<T> selected;
+  final String Function(T) labelOf;
+  final ValueChanged<Set<T>> onChanged;
+  final bool enabled;
+
+  Future<void> _open(BuildContext context) async {
+    if (!enabled || items.isEmpty) return;
+    final result = await showModalBottomSheet<Set<T>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _MultiPickerSheet<T>(
+        title: label,
+        items: items,
+        selected: selected,
+        labelOf: labelOf,
+      ),
+    );
+    if (result != null) onChanged(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = items.where(selected.contains).toList();
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.field),
+      onTap: () => _open(context),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          errorText: errorText,
+          suffixIcon: const Icon(Icons.expand_more),
+        ),
+        child: chosen.isEmpty
+            ? Text(
+                hint ?? 'Tap to choose',
+                style: const TextStyle(color: AppColors.inkFaint),
+              )
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+                child: Wrap(
+                  spacing: Gap.xs,
+                  runSpacing: Gap.xs,
+                  children: [
+                    for (final e in chosen)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Gap.sm,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.saffronTint,
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
+                        ),
+                        child: Text(
+                          labelOf(e),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.saffronDark,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _MultiPickerSheet<T> extends StatefulWidget {
+  const _MultiPickerSheet({
+    required this.title,
+    required this.items,
+    required this.selected,
+    required this.labelOf,
+  });
+
+  final String title;
+  final List<T> items;
+  final Set<T> selected;
+  final String Function(T) labelOf;
+
+  @override
+  State<_MultiPickerSheet<T>> createState() => _MultiPickerSheetState<T>();
+}
+
+class _MultiPickerSheetState<T> extends State<_MultiPickerSheet<T>> {
+  late final Set<T> _draft = {...widget.selected};
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = _q.isEmpty
+        ? widget.items
+        : widget.items
+            .where((e) => widget.labelOf(e).toLowerCase().contains(_q))
+            .toList();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.72,
+        child: Column(
+          children: [
+            const SizedBox(height: Gap.sm),
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.hairline,
+                borderRadius: BorderRadius.circular(AppRadius.chip),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.lg, Gap.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${_draft.length} selected',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.inkMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+              child: TextField(
+                autofocus: false,
+                decoration: const InputDecoration(
+                  hintText: 'Search',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+            Expanded(
+              child: visible.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No matches',
+                        style: TextStyle(color: AppColors.inkFaint),
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: visible.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, color: AppColors.hairline),
+                      itemBuilder: (_, i) {
+                        final e = visible[i];
+                        final on = _draft.contains(e);
+                        return ListTile(
+                          onTap: () => setState(
+                            () => on ? _draft.remove(e) : _draft.add(e),
+                          ),
+                          leading: Icon(
+                            on
+                                ? Icons.check_box
+                                : Icons.check_box_outline_blank,
+                            color: on ? AppColors.saffron : AppColors.inkFaint,
+                          ),
+                          title: Text(widget.labelOf(e)),
+                        );
+                      },
+                    ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.sm, Gap.lg, Gap.md),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(_draft),
+                  child: const Text('Done'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
