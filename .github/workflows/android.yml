@@ -35,6 +35,32 @@ jobs:
           flutter create . --project-name purohit --platforms=android,ios
           rm -f test/widget_test.dart
 
+      # `flutter create` writes android.permission.INTERNET into ONLY the
+      # debug and profile manifests (needed for the Dart VM service / hot
+      # reload). The main manifest -- the one that actually ships inside a
+      # RELEASE apk -- has no INTERNET permission at all, so every network
+      # call dies with "Failed host lookup: ... errno = 7", which looks
+      # exactly like a DNS or Supabase outage but is a permission denial.
+      # Re-inject it after every regeneration.
+      - name: Grant INTERNET permission to the release manifest
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          if 'android.permission.INTERNET' in s:
+              print('INTERNET already present')
+          else:
+              s = re.sub(r'(<manifest\b[^>]*>)',
+                         r'\1\n    <uses-permission android:name="android.permission.INTERNET"/>',
+                         s, count=1)
+              p.write_text(s)
+              print('INTERNET permission added')
+          PY
+          cat android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml \
+            || { echo "::error::INTERNET permission missing from release manifest"; exit 1; }
+
       # .env is gitignored but declared as an asset in pubspec.yaml, so the
       # build fails outright if the file is absent. Populate it from repo
       # secrets when present so the artifact APK really talks to Supabase;
