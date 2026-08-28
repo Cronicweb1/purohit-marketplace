@@ -18,6 +18,11 @@ Future<void> main() async {
   final anonKey = dotenv.maybeGet('SUPABASE_ANON_KEY');
 
   if (url != null && anonKey != null) {
+    // TODO(auth): `anonKey` is deprecated in favour of `publishableKey` and is
+    // removed in supabase_flutter v3. Switch when you bump the major version —
+    // the new param needs the `sb_publishable_...` key from Settings > API, not
+    // the legacy JWT anon key, so both the code AND .env change together.
+    // ignore: deprecated_member_use
     await Supabase.initialize(url: url, anonKey: anonKey);
   }
 

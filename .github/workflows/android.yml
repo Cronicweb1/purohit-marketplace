@@ -24,8 +24,16 @@ jobs:
 
       # android/ and ios/ are gitignored; regenerate them each run so the repo
       # stays small and platform files never drift.
+      #
+      # `flutter create .` also drops its OWN template test/widget_test.dart,
+      # which references the template class `MyApp`. Our app class is
+      # `PurohitApp`, so that generated file fails `flutter analyze` with
+      # "The name 'MyApp' isn't a class". Delete it — test/smoke_test.dart is
+      # the real test and it is committed.
       - name: Generate platform folders
-        run: flutter create . --project-name purohit --platforms=android,ios
+        run: |
+          flutter create . --project-name purohit --platforms=android,ios
+          rm -f test/widget_test.dart
 
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos

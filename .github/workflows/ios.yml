@@ -20,8 +20,12 @@ jobs:
           channel: stable
           cache: true
 
+      # Drop the template test/widget_test.dart that `flutter create` regenerates
+      # (it references the template class `MyApp`, not our `PurohitApp`).
       - name: Generate platform folders
-        run: flutter create . --project-name purohit --platforms=android,ios
+        run: |
+          flutter create . --project-name purohit --platforms=android,ios
+          rm -f test/widget_test.dart
 
       - run: flutter pub get
 
