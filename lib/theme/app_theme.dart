@@ -23,6 +23,20 @@ abstract final class AppColors {
   static const success = Color(0xFF2E7D46);
   static const warning = Color(0xFFB4690E);
   static const danger = Color(0xFFB3261E);
+
+  /// Low-saturation washes for banners, selected chips and status pills.
+  /// Tinting a surface reads as calmer than colouring the text alone.
+  static const saffronTint = Color(0xFFFDF2E4);
+  static const successTint = Color(0xFFEAF4ED);
+  static const warningTint = Color(0xFFFDF3E2);
+  static const dangerTint = Color(0xFFFBEBE9);
+}
+
+/// Motion scale. Short and consistent beats bespoke per-widget timings.
+abstract final class AppDuration {
+  static const fast = Duration(milliseconds: 150);
+  static const normal = Duration(milliseconds: 240);
+  static const slow = Duration(milliseconds: 360);
 }
 
 /// Spacing scale. Use these instead of magic numbers so screens stay aligned.
@@ -75,8 +89,57 @@ ThemeData buildAppTheme() {
         side: const BorderSide(color: AppColors.hairline),
       ),
     ),
+    splashFactory: InkRipple.splashFactory,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: ZoomPageTransitionsBuilder(),
+        TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
+      },
+    ),
+    dividerTheme: const DividerThemeData(
+      color: AppColors.hairline,
+      thickness: 1,
+      space: 1,
+    ),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: AppColors.saffron,
+      selectionColor: AppColors.marigold.withValues(alpha: 0.35),
+      selectionHandleColor: AppColors.saffron,
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.saffron,
+      linearMinHeight: 3,
+    ),
+    listTileTheme: const ListTileThemeData(
+      iconColor: AppColors.inkMuted,
+      textColor: AppColors.ink,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.ink,
+      contentTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      actionTextColor: AppColors.marigold,
+      insetPadding: const EdgeInsets.all(Gap.md),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.field),
+      ),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: AppColors.card,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: Colors.white,
+      selectedColor: AppColors.saffronTint,
+      checkmarkColor: AppColors.saffronDark,
       side: const BorderSide(color: AppColors.hairline),
       labelStyle: const TextStyle(
         fontSize: 12.5,

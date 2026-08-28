@@ -2,6 +2,30 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// Lets a non-scrolling message still answer a pull-to-refresh gesture.
+///
+/// Empty and error states used to sit outside the [RefreshIndicator], so the
+/// one moment a user most wants to retry was the one moment the gesture did
+/// nothing. Wrapping them in a stretched scroll view fixes that.
+class RefreshableBody extends StatelessWidget {
+  const RefreshableBody({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -24,7 +48,15 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AppColors.inkFaint),
+            Container(
+              height: 76,
+              width: 76,
+              decoration: const BoxDecoration(
+                color: AppColors.saffronTint,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 34, color: AppColors.saffronDark),
+            ),
             const SizedBox(height: Gap.lg),
             Text(
               title,
@@ -59,7 +91,19 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off, size: 48, color: AppColors.inkFaint),
+            Container(
+              height: 76,
+              width: 76,
+              decoration: const BoxDecoration(
+                color: AppColors.dangerTint,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_off,
+                size: 32,
+                color: AppColors.danger,
+              ),
+            ),
             const SizedBox(height: Gap.lg),
             const Text(
               'Could not load',

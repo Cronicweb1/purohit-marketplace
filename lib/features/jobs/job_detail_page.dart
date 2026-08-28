@@ -8,6 +8,7 @@ import '../../data/jobs_repository.dart';
 import '../../models/application.dart';
 import '../../models/job.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
 
 class JobDetailPage extends ConsumerWidget {
@@ -23,7 +24,7 @@ class JobDetailPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Ceremony')),
       body: job.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const DetailSkeleton(),
         error: (e, _) => ErrorView(
           error: e,
           onRetry: () => ref.invalidate(jobDetailProvider(jobId)),
@@ -140,10 +141,7 @@ class _Applicants extends ConsumerWidget {
     final apps = ref.watch(jobApplicationsProvider(jobId));
 
     return apps.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.all(Gap.lg),
-        child: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () => const TileSkeletonColumn(count: 2, padding: EdgeInsets.zero),
       error: (e, _) => Text(
         '$e',
         style: const TextStyle(fontSize: 13, color: AppColors.danger),
