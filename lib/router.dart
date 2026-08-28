@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/session.dart';
+import 'features/admin/admin_page.dart';
+import 'features/admin/admin_sign_in_page.dart';
 import 'features/auth/onboarding_page.dart';
 import 'features/auth/sign_in_page.dart';
 import 'features/auth/verify_otp_page.dart';
@@ -11,6 +13,7 @@ import 'features/jobs/jobs_feed_page.dart';
 import 'features/jobs/my_work_page.dart';
 import 'features/jobs/post_job_page.dart';
 import 'features/profile/profile_page.dart';
+import 'features/purohit/register_purohit_page.dart';
 import 'features/rituals/rituals_page.dart';
 import 'features/shell/home_shell.dart';
 import 'theme/app_theme.dart';
@@ -35,7 +38,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final status = ref.read(sessionProvider).status;
       final loc = state.matchedLocation;
 
-      const publicRoutes = {'/sign-in', '/verify', '/browse'};
+      // `/admin-sign-in` is public for the same reason `/sign-in` is: you have
+      // to reach it before you have a session.
+      const publicRoutes = {
+        '/sign-in',
+        '/verify',
+        '/browse',
+        '/admin-sign-in',
+      };
       final isPublic = publicRoutes.contains(loc);
 
       switch (status) {
@@ -48,7 +58,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         case SessionStatus.needsOnboarding:
           return loc == '/onboarding' ? null : '/onboarding';
         case SessionStatus.ready:
-          if (loc == '/onboarding' || loc == '/setup' || isPublic) return '/jobs';
+          // '/' is not a real route — VerifyOtpPage lands there and lets the
+          // redirect decide, so it must resolve or the user hits "Not found".
+          if (loc == '/' ||
+              loc == '/onboarding' ||
+              loc == '/setup' ||
+              isPublic) {
+            return '/jobs';
+          }
           return null;
       }
     },
@@ -61,6 +78,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             VerifyOtpPage(email: state.uri.queryParameters['email'] ?? ''),
       ),
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
+      GoRoute(
+        path: '/register-purohit',
+        builder: (_, __) => const RegisterPurohitPage(),
+      ),
+      GoRoute(
+        path: '/admin-sign-in',
+        builder: (_, __) => const AdminSignInPage(),
+      ),
+      // Top-level, not a shell branch: [HomeShell] hard-codes four branch
+      // indexes and go_router builds that list once, so a conditional fifth tab
+      // would desync the index contract.
+      GoRoute(path: '/admin', builder: (_, __) => const AdminPage()),
       GoRoute(
         path: '/browse',
         builder: (_, __) => const Scaffold(body: RitualsView(standalone: true)),

@@ -25,12 +25,22 @@ class SessionState {
     this.profile,
     this.pandit,
     this.email,
+    this.isAdmin = false,
   });
 
   final SessionStatus status;
   final Profile? profile;
   final PanditProfile? pandit;
   final String? email;
+
+  /// Read from `auth.users.app_metadata`, which only the service role can
+  /// write. `user_metadata` is client-writable and therefore worthless for
+  /// authorisation, and a `profiles.is_admin` column would be RLS-readable but
+  /// still needs a round trip — the JWT already carries the answer.
+  ///
+  /// This flag only hides UI. Every admin action is re-checked server-side by
+  /// `public.is_admin()` in RLS and by the `guard_pandit_status` trigger.
+  final bool isAdmin;
 
   /// Role is derived from the existence of a `pandit_profiles` row rather than
   /// stored on `profiles`. `auth.users.app_metadata` would be the "correct"
@@ -51,6 +61,7 @@ class SessionState {
     Profile? profile,
     PanditProfile? pandit,
     String? email,
+    bool? isAdmin,
     bool clearPandit = false,
   }) =>
       SessionState(
@@ -58,6 +69,7 @@ class SessionState {
         profile: profile ?? this.profile,
         pandit: clearPandit ? null : (pandit ?? this.pandit),
         email: email ?? this.email,
+        isAdmin: isAdmin ?? this.isAdmin,
       );
 }
 
@@ -90,6 +102,11 @@ class SessionController extends Notifier<SessionState> {
       return;
     }
 
+    // Deliberately computed before the try block: it is a pure token read with
+    // no network call, so an admin keeps the console even when the profile
+    // fetch below fails.
+    final isAdmin = user.appMetadata['role'] == 'admin';
+
     try {
       final profileRow = await supabase
           .from('profiles')
@@ -101,6 +118,7 @@ class SessionController extends Notifier<SessionState> {
         state = SessionState(
           status: SessionStatus.needsOnboarding,
           email: user.email,
+          isAdmin: isAdmin,
         );
         return;
       }
@@ -121,6 +139,7 @@ class SessionController extends Notifier<SessionState> {
             ? null
             : PanditProfile.fromMap(Map<String, dynamic>.from(panditRow)),
         email: user.email,
+        isAdmin: isAdmin,
       );
     } catch (_) {
       // Offline or RLS surprise. Treat as signed-in-but-incomplete rather than
@@ -128,6 +147,7 @@ class SessionController extends Notifier<SessionState> {
       state = SessionState(
         status: SessionStatus.needsOnboarding,
         email: user.email,
+        isAdmin: isAdmin,
       );
     }
   }

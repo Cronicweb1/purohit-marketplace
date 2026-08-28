@@ -63,7 +63,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           );
       await ref.read(sessionProvider.notifier).refresh();
       if (!mounted) return;
-      context.go('/');
+      // Purohits go straight into registration — asking for the role and then
+      // dropping them on a job feed they cannot use was the old dead end.
+      // ('/' was also not a real route, so this used to render "Not found".)
+      context.go(_role == UserRole.purohit ? '/register-purohit' : '/jobs');
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');

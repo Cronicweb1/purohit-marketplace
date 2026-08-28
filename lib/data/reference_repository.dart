@@ -54,3 +54,10 @@ final bookableRitualsProvider = FutureProvider<List<Ritual>>((ref) async {
   final all = await ref.watch(ritualsProvider.future);
   return all.where((r) => r.bookable).toList();
 });
+
+/// Only the rituals a purohit may list as a specialisation. Vedic Knowledge,
+/// Jyotishacharya, Kathavachak and Karmakandi live here but are not bookable.
+final claimableRitualsProvider = FutureProvider<List<Ritual>>((ref) async {
+  final all = await ref.watch(ritualsProvider.future);
+  return all.where((r) => r.claimable).toList();
+});
