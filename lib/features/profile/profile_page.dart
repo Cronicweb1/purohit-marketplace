@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../core/session.dart';
@@ -99,6 +100,30 @@ class ProfilePage extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: Gap.xxl),
+          if (session.isPurohit)
+            FilledButton.tonalIcon(
+              onPressed: () => context.push('/register-purohit'),
+              icon: Icon(
+                pandit == null
+                    ? Icons.how_to_reg_outlined
+                    : Icons.edit_outlined,
+                size: 18,
+              ),
+              label: Text(
+                pandit == null
+                    ? 'Register as a purohit'
+                    : 'Edit purohit details',
+              ),
+            ),
+          if (session.isAdmin) ...[
+            const SizedBox(height: Gap.sm),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/admin'),
+              icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+              label: const Text('Verification console'),
+            ),
+          ],
+          const SizedBox(height: Gap.lg),
           OutlinedButton.icon(
             onPressed: () => ref.read(sessionProvider.notifier).signOut(),
             icon: const Icon(Icons.logout, size: 18),

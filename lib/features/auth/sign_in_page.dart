@@ -143,6 +143,17 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                   onPressed: () => context.go('/browse'),
                   child: const Text('Browse ceremonies without signing in'),
                 ),
+                const SizedBox(height: Gap.sm),
+                Center(
+                  child: TextButton(
+                    onPressed: () => context.go('/admin-sign-in'),
+                    child: const Text(
+                      'Admin sign in',
+                      style: TextStyle(
+                          fontSize: 12.5, color: AppColors.inkFaint),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
