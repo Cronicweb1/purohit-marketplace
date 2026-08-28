@@ -57,8 +57,35 @@ jobs:
       - run: flutter test
       - run: flutter build apk --debug
 
+      # A debug APK is ~10x the real thing: it bundles all 3 CPU architectures,
+      # the Dart JIT + VM service (hot reload machinery), and full symbols, and
+      # it skips tree-shaking/minification. Build the release variant too, split
+      # per ABI, so the size a user actually downloads is measured every run
+      # instead of guessed. Debug-signed, so this is still test-only.
+      - run: flutter build apk --release --split-per-abi
+
+      - name: Report APK sizes
+        run: |
+          {
+            echo "### APK sizes"
+            echo ""
+            echo "| Variant | Bytes | MB |"
+            echo "|---|---:|---:|"
+            for f in build/app/outputs/flutter-apk/*.apk; do
+              b=$(stat -c%s "$f")
+              printf '| `%s` | %s | %s |\n' \
+                "$(basename "$f")" "$b" "$(awk -v b="$b" 'BEGIN{printf "%.1f", b/1048576}')"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apks
+          path: build/app/outputs/flutter-apk/app-*-release.apk
           if-no-files-found: error
