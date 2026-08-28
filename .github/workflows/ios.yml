@@ -1,0 +1,31 @@
+name: iOS
+
+# iOS builds REQUIRE macOS — Apple licensing plus Xcode. They cannot run on the
+# Azure VM or any Linux runner. Free on public repos; on private repos macOS
+# minutes bill at a 10x multiplier (~200 real minutes on the free tier).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate platform folders
+        run: flutter create . --project-name purohit --platforms=android,ios
+
+      - run: flutter pub get
+
+      # --no-codesign compiles without Apple certificates, so CI is green before
+      # you enrol in the Apple Developer Program. Swap to a signed archive +
+      # TestFlight upload once the certs are in GitHub Secrets.
+      - run: flutter build ios --debug --no-codesign

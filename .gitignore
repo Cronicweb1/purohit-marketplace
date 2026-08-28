@@ -1,0 +1,17 @@
+.env
+.dart_tool/
+.packages
+build/
+pubspec.lock
+.idea/
+.vscode/
+*.iml
+
+# Regenerated in CI by `flutter create .` so the repo stays small and platform
+# files never drift.
+android/
+ios/
+macos/
+linux/
+windows/
+web/
