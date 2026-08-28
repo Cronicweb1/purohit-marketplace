@@ -96,7 +96,12 @@ jobs:
       # compiles, and analyze + test already gate correctness, so building both
       # roughly doubled the job for no extra signal. Debug-signed either way,
       # so this is still test-only, not Play Store ready.
-      - run: flutter build apk --release
+      #
+      # ABIs are limited to 32- and 64-bit ARM. x86_64 only matters for Intel
+      # emulators; every real Android phone is ARM and an Apple-silicon Mac
+      # runs arm64-v8a system images, so that slice was dead weight worth
+      # roughly a third of the download. Undo by deleting --target-platform.
+      - run: flutter build apk --release --target-platform android-arm,android-arm64
 
       - name: Report APK sizes
         run: |
