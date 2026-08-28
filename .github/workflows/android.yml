@@ -81,14 +81,22 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
-      - run: flutter build apk --debug
 
-      # A debug APK is ~10x the real thing: it bundles all 3 CPU architectures,
-      # the Dart JIT + VM service (hot reload machinery), and full symbols, and
-      # it skips tree-shaking/minification. Build the release variant too, split
-      # per ABI, so the size a user actually downloads is measured every run
-      # instead of guessed. Debug-signed, so this is still test-only.
-      - run: flutter build apk --release --split-per-abi
+      # One universal release APK instead of a per-ABI split.
+      #
+      # --split-per-abi produced three files (arm64-v8a, armeabi-v7a, x86_64)
+      # and the download arrived as a zip you had to choose from. A universal
+      # APK bundles all three ABIs into a single file that installs on any
+      # phone or emulator: ~40-50% larger to download, but nothing to pick.
+      # Reverting is a one-line change -- re-add --split-per-abi and restore
+      # the app-*-release.apk artifact path -- and it touches only this
+      # workflow, never the app code or the Supabase project.
+      #
+      # The debug build was dropped: the release build already proves the app
+      # compiles, and analyze + test already gate correctness, so building both
+      # roughly doubled the job for no extra signal. Debug-signed either way,
+      # so this is still test-only, not Play Store ready.
+      - run: flutter build apk --release
 
       - name: Report APK sizes
         run: |
@@ -106,12 +114,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apks
-          path: build/app/outputs/flutter-apk/app-*-release.apk
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
