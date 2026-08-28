@@ -295,7 +295,7 @@ class _CaseCardState extends ConsumerState<_CaseCard> {
                   if (g.gurukulName != null) g.gurukulName!,
                   if (g.yearsStudied != null)
                     'Studied ${g.yearsStudied} years',
-                  if (g.guruPhone != null) 'Phone: ${g.guruPhone}',
+                  if (g.hasPhone) 'Phone: ${g.guruPhone}',
                   if (g.notes != null) g.notes!,
                 ],
               ),

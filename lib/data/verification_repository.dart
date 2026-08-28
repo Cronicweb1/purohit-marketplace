@@ -87,6 +87,8 @@ class VerificationRepository {
     final uid = currentUserId;
     if (uid == null) throw StateError('Not signed in.');
 
+    // The UI now requires a link, but keep the 'pending' branch: an admin
+    // adding a paper certificate on someone's behalf has no URL to give.
     final url = (documentUrl ?? '').trim();
     await supabase.from('certificates').insert({
       'pandit_id': uid,
@@ -102,7 +104,11 @@ class VerificationRepository {
   /// Path 2 of 2, for purohits trained outside a formal Gurukul.
   Future<void> addGuruReference({
     required String guruName,
-    String? guruPhone,
+
+    /// Required since `0005_guru_phone_required.sql`. The column is NOT NULL
+    /// with an 8-20 character CHECK, so an empty string is rejected by
+    /// Postgres, not silently dropped as it used to be.
+    required String guruPhone,
     String? gurukulName,
     int? yearsStudied,
     String? notes,
@@ -114,7 +120,7 @@ class VerificationRepository {
     await supabase.from('guru_references').insert({
       'pandit_id': uid,
       'guru_name': guruName.trim(),
-      if ((guruPhone ?? '').trim().isNotEmpty) 'guru_phone': guruPhone!.trim(),
+      'guru_phone': guruPhone.trim(),
       if ((gurukulName ?? '').trim().isNotEmpty)
         'gurukul_name': gurukulName!.trim(),
       if (yearsStudied != null) 'years_studied': yearsStudied,

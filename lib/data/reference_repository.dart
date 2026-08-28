@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/supabase_providers.dart';
 import '../models/city.dart';
+import '../models/institution.dart';
 import '../models/ritual.dart';
 
 /// Cities and rituals are the only tables readable with the anon key, so these
@@ -36,6 +37,21 @@ class ReferenceRepository {
         .map((e) => City.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
+
+  /// Gurukuls, Veda Pathashalas and Sanskrit universities. Anon-readable for
+  /// the same reason cities are: the registration form needs it before the
+  /// purohit has a `pandit_profiles` row to be authorised against.
+  Future<List<Institution>> institutions() async {
+    if (!supabaseReady) return const [];
+    final res = await supabase
+        .from('institutions')
+        .select('id, name, city, state, kind')
+        .eq('is_active', true)
+        .order('name');
+    return (res as List)
+        .map((e) => Institution.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
 }
 
 final referenceRepositoryProvider =
@@ -47,6 +63,10 @@ final ritualsProvider = FutureProvider<List<Ritual>>(
 
 final citiesProvider = FutureProvider<List<City>>(
   (ref) => ref.watch(referenceRepositoryProvider).cities(),
+);
+
+final institutionsProvider = FutureProvider<List<Institution>>(
+  (ref) => ref.watch(referenceRepositoryProvider).institutions(),
 );
 
 /// Only the rituals a family can actually post a job for.

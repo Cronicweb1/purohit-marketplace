@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/session.dart';
 import '../../data/reference_repository.dart';
 import '../../data/verification_repository.dart';
+import '../../data/languages.dart';
 import '../../models/city.dart';
+import '../../models/institution.dart';
 import '../../models/ritual.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/pickers.dart';
@@ -36,12 +38,20 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
   final _name = TextEditingController();
   final _bio = TextEditingController();
   final _years = TextEditingController();
-  final _languages = TextEditingController();
   final _fee = TextEditingController();
   final _radius = TextEditingController(text: '25');
 
   // Certificate path.
   final _institution = TextEditingController();
+
+  /// Stored as ISO codes to match the rows already in `pandit_profiles.languages`.
+  final Set<String> _languageCodes = <String>{};
+  String? _langError;
+
+  Institution? _inst;
+  bool _instManual = false;
+  Institution? _guruInst;
+  bool _guruInstManual = false;
   final _documentUrl = TextEditingController();
   String _certKind = 'gurukul';
   DateTime? _issuedOn;
@@ -66,7 +76,6 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
       _name,
       _bio,
       _years,
-      _languages,
       _fee,
       _radius,
       _institution,
@@ -106,13 +115,33 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
       }
       _radius.text = pandit.serviceRadiusKm.toString();
       if (pandit.languages.isNotEmpty) {
-        _languages.text = pandit.languages.join(', ');
+        _languageCodes
+          ..clear()
+          ..addAll(pandit.languages);
       }
     }
   }
 
+  /// Whichever of the picker or the free-text box is actually in play.
+  String get _institutionName =>
+      _instManual ? _institution.text.trim() : (_inst?.name ?? '');
+
+  String get _guruInstitutionName =>
+      _guruInstManual ? _gurukulName.text.trim() : (_guruInst?.name ?? '');
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // Two checks the Form can not run for us: MultiPickerField and PickerField
+    // are not FormFields, so their emptiness has to be caught by hand.
+    if (_languageCodes.isEmpty) {
+      setState(() => _langError = 'Pick at least one language');
+      return;
+    }
+    if (_proof == _Proof.certificate && _institutionName.length < 3) {
+      setState(() => _error = 'Choose the institution that issued your certificate.');
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -129,11 +158,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
         experienceYears: int.tryParse(_years.text.trim()),
         serviceRadiusKm: int.tryParse(_radius.text.trim()),
         baseFee: double.tryParse(_fee.text.trim()),
-        languages: _languages.text
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList(),
+        languages: _languageCodes.toList(),
       );
 
       if (_ritualIds.isNotEmpty) {
@@ -142,7 +167,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
 
       if (_proof == _Proof.certificate) {
         await repo.addCertificate(
-          institution: _institution.text,
+          institution: _institutionName,
           kind: _certKind,
           issuedOn: _issuedOn,
           documentUrl: _documentUrl.text,
@@ -151,7 +176,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
         await repo.addGuruReference(
           guruName: _guruName.text,
           guruPhone: _guruPhone.text,
-          gurukulName: _gurukulName.text,
+          gurukulName: _guruInstitutionName,
           yearsStudied: int.tryParse(_guruYears.text.trim()),
           notes: _guruNotes.text,
         );
@@ -278,12 +303,21 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
               ),
             ),
             const SizedBox(height: Gap.md),
-            TextFormField(
-              controller: _languages,
-              decoration: const InputDecoration(
-                labelText: 'Languages',
-                hintText: 'Hindi, Sanskrit, Bhojpuri',
-              ),
+            MultiPickerField<IndianLanguage>(
+              label: 'Languages you conduct ceremonies in',
+              hint: 'Hindi, Sanskrit, Bhojpuri…',
+              items: IndianLanguages.ordered,
+              selected: IndianLanguages.ordered
+                  .where((l) => _languageCodes.contains(l.code))
+                  .toSet(),
+              labelOf: (l) => l.label,
+              errorText: _langError,
+              onChanged: (picked) => setState(() {
+                _languageCodes
+                  ..clear()
+                  ..addAll(picked.map((l) => l.code));
+                _langError = null;
+              }),
             ),
             const SizedBox(height: Gap.md),
             TextFormField(
@@ -393,17 +427,20 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           ],
         ),
         const SizedBox(height: Gap.md),
-        TextFormField(
+        ..._institutionField(
+          label: 'Institution',
+          manual: _instManual,
+          picked: _inst,
           controller: _institution,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Institution',
-            hintText: 'Shri Kashi Vishwanath Sanskrit Vidyalaya',
-          ),
-          validator: (v) => _proof == _Proof.certificate &&
-                  (v == null || v.trim().length < 3)
-              ? 'Where did you study?'
-              : null,
+          isRequired: _proof == _Proof.certificate,
+          onPicked: (i) => setState(() {
+            _inst = i;
+            _error = null;
+          }),
+          onToggleManual: () => setState(() {
+            _instManual = !_instManual;
+            _error = null;
+          }),
         ),
         const SizedBox(height: Gap.md),
         InkWell(
@@ -437,12 +474,85 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           controller: _documentUrl,
           keyboardType: TextInputType.url,
           decoration: const InputDecoration(
-            labelText: 'Link to a scan (optional)',
-            hintText: 'Google Drive or DigiLocker link',
-            helperText: 'You can add this later — an admin may ask for it.',
+            labelText: 'Link to a scan of the certificate',
+            hintText: 'https://drive.google.com/...',
+            helperText: 'Upload the scan to Google Drive or DigiLocker, set the '
+                'link to "anyone with the link can view", then paste it here.',
+            helperMaxLines: 3,
           ),
+          validator: (v) {
+            if (_proof != _Proof.certificate) return null;
+            final t = (v ?? '').trim();
+            if (t.isEmpty) return 'An admin cannot verify a certificate they cannot see.';
+            final uri = Uri.tryParse(t);
+            if (uri == null ||
+                !uri.hasScheme ||
+                (uri.scheme != 'http' && uri.scheme != 'https') ||
+                (uri.host).isEmpty) {
+              return 'Paste a full link starting with https://';
+            }
+            return null;
+          },
         ),
       ];
+
+  /// An institution picker with a free-text escape hatch.
+  ///
+  /// The seeded registry holds 128 Gurukuls, Veda Pathashalas and Sanskrit
+  /// universities, but it can never be complete — there are thousands of
+  /// village pathshalas with no web presence at all. Refusing an unlisted name
+  /// would lock out exactly the purohits this app exists to reach, so the list
+  /// is an aid to spelling, never a gate. A failed or empty load silently falls
+  /// back to typing.
+  List<Widget> _institutionField({
+    required String label,
+    required bool manual,
+    required Institution? picked,
+    required TextEditingController controller,
+    required bool isRequired,
+    required ValueChanged<Institution?> onPicked,
+    required VoidCallback onToggleManual,
+  }) {
+    final async = ref.watch(institutionsProvider);
+    final items = async.asData?.value ?? const <Institution>[];
+    final typing = manual || async.hasError || (async.hasValue && items.isEmpty);
+
+    return [
+      if (typing)
+        TextFormField(
+          controller: controller,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: 'Shri Kashi Vishwanath Sanskrit Vidyalaya',
+          ),
+          validator: (v) => isRequired && (v == null || v.trim().length < 3)
+              ? 'Where did you study?'
+              : null,
+        )
+      else
+        PickerField<Institution>(
+          label: label,
+          hint: async.isLoading
+              ? 'Loading the list…'
+              : 'Search Gurukuls, pathshalas and universities',
+          value: picked,
+          items: items,
+          labelOf: (i) => i.label,
+          onChanged: onPicked,
+        ),
+      if (manual || !typing)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: onToggleManual,
+            child: Text(
+              manual ? 'Pick from the list instead' : 'Not in the list? Type it',
+            ),
+          ),
+        ),
+    ];
+  }
 
   List<Widget> _guruFields() => [
         TextFormField(
@@ -462,17 +572,33 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           controller: _guruPhone,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(
-            labelText: "Guru's phone (optional)",
-            helperText: 'Used only to confirm your training.',
+            labelText: "Guru's phone",
+            hintText: '98765 43210',
+            helperText: 'We call your guru to confirm your training. Without a '
+                'reachable number this route cannot be verified.',
+            helperMaxLines: 3,
           ),
+          validator: (v) {
+            if (_proof != _Proof.guru) return null;
+            final t = (v ?? '').trim();
+            if (t.isEmpty) return "Your guru's phone number is required";
+            final digits = t.replaceAll(RegExp(r'[^0-9]'), '');
+            if (digits.length < 10 || digits.length > 15) {
+              return 'Enter a valid phone number with country or STD code';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: Gap.md),
-        TextFormField(
+        ..._institutionField(
+          label: 'Gurukul or math (optional)',
+          manual: _guruInstManual,
+          picked: _guruInst,
           controller: _gurukulName,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Gurukul or math (optional)',
-          ),
+          isRequired: false,
+          onPicked: (i) => setState(() => _guruInst = i),
+          onToggleManual: () =>
+              setState(() => _guruInstManual = !_guruInstManual),
         ),
         const SizedBox(height: Gap.md),
         TextFormField(

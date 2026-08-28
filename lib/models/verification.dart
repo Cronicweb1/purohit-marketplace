@@ -44,7 +44,7 @@ class GuruReference {
   const GuruReference({
     required this.id,
     required this.guruName,
-    this.guruPhone,
+    required this.guruPhone,
     this.gurukulName,
     this.yearsStudied,
     this.notes,
@@ -52,7 +52,16 @@ class GuruReference {
 
   final int id;
   final String guruName;
-  final String? guruPhone;
+  /// Non-nullable since `0005_guru_phone_required.sql`: an unreachable guru is
+  /// an unverifiable reference. Rows that predate the migration were backfilled
+  /// with the `not-provided` sentinel rather than deleted — they are a real
+  /// purohit's only proof of training — so read through [hasPhone], never
+  /// [guruPhone] directly.
+  final String guruPhone;
+
+  static const notProvided = 'not-provided';
+
+  bool get hasPhone => guruPhone.isNotEmpty && guruPhone != notProvided;
   final String? gurukulName;
   final int? yearsStudied;
   final String? notes;
@@ -60,7 +69,7 @@ class GuruReference {
   static GuruReference fromMap(Map<String, dynamic> m) => GuruReference(
         id: (m['id'] as num).toInt(),
         guruName: m['guru_name'] as String? ?? '',
-        guruPhone: m['guru_phone'] as String?,
+        guruPhone: m['guru_phone'] as String? ?? '',
         gurukulName: m['gurukul_name'] as String?,
         yearsStudied: (m['years_studied'] as num?)?.toInt(),
         notes: m['notes'] as String?,

@@ -13,8 +13,13 @@ class ApplicationsRepository {
 
     final res = await supabase
         .from('applications')
+        // The FK name is not decoration. Two paths exist between these tables
+        // (applications.job_id -> jobs, and jobs.selected_application_id ->
+        // applications), so an unqualified `jobs(title)` makes PostgREST throw
+        // PGRST201 rather than guess. Any future reviews+jobs embed hits this
+        // same trap.
         .select('id, job_id, pandit_id, message, quoted_fee, status, created_at, '
-            'jobs(title)')
+            'jobs!applications_job_id_fkey(title)')
         .eq('pandit_id', uid)
         .order('created_at', ascending: false);
     return (res as List)
