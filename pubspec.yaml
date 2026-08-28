@@ -23,3 +23,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # flutter_dotenv reads .env through rootBundle, so it MUST be declared as an
+  # asset or dotenv.load() throws and Supabase is never initialised — silently,
+  # because main.dart swallows that error to keep CI green.
+  assets:
+    - .env

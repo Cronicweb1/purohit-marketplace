@@ -27,7 +27,27 @@ jobs:
           flutter create . --project-name purohit --platforms=android,ios
           rm -f test/widget_test.dart
 
+      # .env is a declared asset in pubspec.yaml — the build fails if absent.
+      - name: Write .env
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            printf 'SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > .env
+            echo "Wrote .env from repository secrets."
+          else
+            cp .env.example .env
+            echo "::warning::Secrets missing - built with placeholder .env, app will not reach Supabase."
+          fi
+
       - run: flutter pub get
+
+      # Previously this job ran NEITHER analyze NOR test, so it stayed green
+      # through a broken build and gave a false sense of health. Both now run
+      # here too — a green iOS badge should mean something.
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
 
       # --no-codesign compiles without Apple certificates, so CI is green before
       # you enrol in the Apple Developer Program. Swap to a signed archive +

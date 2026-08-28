@@ -35,6 +35,23 @@ jobs:
           flutter create . --project-name purohit --platforms=android,ios
           rm -f test/widget_test.dart
 
+      # .env is gitignored but declared as an asset in pubspec.yaml, so the
+      # build fails outright if the file is absent. Populate it from repo
+      # secrets when present so the artifact APK really talks to Supabase;
+      # otherwise fall back to the placeholder template.
+      - name: Write .env
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            printf 'SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > .env
+            echo "Wrote .env from repository secrets."
+          else
+            cp .env.example .env
+            echo "::warning::Secrets missing - built with placeholder .env, app will not reach Supabase."
+          fi
+
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
