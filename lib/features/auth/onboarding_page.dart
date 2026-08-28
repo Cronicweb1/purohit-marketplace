@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/auth_intent.dart';
 import '../../core/session.dart';
 import '../../data/profile_repository.dart';
 import '../../data/reference_repository.dart';
@@ -32,6 +33,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   City? _city;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Someone who tapped "Register as a purohit" on the sign-in page should not
+    // have to answer the role question again.
+    _role = AuthIntent.take();
+  }
 
   @override
   void dispose() {
