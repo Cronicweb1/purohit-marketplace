@@ -9,6 +9,7 @@ import '../../data/jobs_repository.dart';
 import '../../models/application.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/job_card.dart';
+import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
 
 /// Branch 1 of the shell. Means two different things depending on the role:
@@ -40,8 +41,9 @@ class _MyJobs extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(myJobsProvider),
+      color: AppColors.saffron,
       child: jobs.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const JobListSkeleton(count: 3),
         error: (e, _) =>
             ErrorView(error: e, onRetry: () => ref.invalidate(myJobsProvider)),
         data: (list) {
@@ -59,9 +61,12 @@ class _MyJobs extends ConsumerWidget {
               ],
             );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: Gap.md),
+          return ListView.separated(
+            key: const PageStorageKey('my-jobs'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.lg, Gap.xxl),
             itemCount: list.length,
+            separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
             itemBuilder: (context, i) {
               final job = list[i];
               return JobCard(
@@ -86,8 +91,9 @@ class _MyApplications extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(myApplicationsProvider),
+      color: AppColors.saffron,
       child: apps.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const TileListSkeleton(count: 4),
         error: (e, _) => ErrorView(
           error: e,
           onRetry: () => ref.invalidate(myApplicationsProvider),

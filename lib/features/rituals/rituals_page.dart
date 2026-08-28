@@ -8,6 +8,7 @@ import '../../data/profile_repository.dart';
 import '../../data/reference_repository.dart';
 import '../../models/ritual.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
 
 /// The only surface that works before sign-in.
@@ -48,6 +49,7 @@ class _RitualsViewState extends ConsumerState<RitualsView> {
         ],
       ),
       body: RefreshIndicator(
+        color: AppColors.saffron,
         onRefresh: () async {
           ref.invalidate(ritualsProvider);
           ref.invalidate(approvedPanditsProvider);
@@ -78,10 +80,7 @@ class _RitualsViewState extends ConsumerState<RitualsView> {
             const SliverToBoxAdapter(child: SectionHeader(title: 'Ceremonies')),
             rituals.when(
               loading: () => const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(Gap.xxl),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
+                child: TileSkeletonColumn(count: 5),
               ),
               error: (e, _) => SliverToBoxAdapter(
                 child: ErrorView(
@@ -126,10 +125,7 @@ class _RitualsViewState extends ConsumerState<RitualsView> {
             ),
             pandits.when(
               loading: () => const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(Gap.xl),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
+                child: TileSkeletonColumn(count: 3),
               ),
               error: (e, _) => const SliverToBoxAdapter(
                 child: Padding(

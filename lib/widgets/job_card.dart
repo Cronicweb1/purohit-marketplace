@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/format.dart';
 import '../models/job.dart';
 import '../theme/app_theme.dart';
+import 'feedback.dart';
 
 /// The Upwork job card, retuned for rituals.
 ///
@@ -18,9 +20,16 @@ class JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PressScale(
+      enabled: onTap != null,
+      child: Card(
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
         borderRadius: BorderRadius.circular(AppRadius.card),
         child: Padding(
           padding: const EdgeInsets.all(Gap.lg),
@@ -89,14 +98,32 @@ class JobCard extends StatelessWidget {
               ],
               if (job.ritualName != null) ...[
                 const SizedBox(height: Gap.md),
-                Wrap(
-                  spacing: Gap.sm,
-                  children: [Chip(label: Text(job.ritualName!))],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Gap.md,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.saffronTint,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                    ),
+                    child: Text(
+                      job.ritualName!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.saffronDark,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ],
           ),
         ),
+      ),
       ),
     );
   }

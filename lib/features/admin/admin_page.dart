@@ -6,6 +6,9 @@ import '../../core/session.dart';
 import '../../data/verification_repository.dart';
 import '../../models/verification.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/feedback.dart';
+import '../../widgets/skeletons.dart';
+import '../../widgets/states.dart';
 
 /// The admin verification console.
 ///
@@ -77,39 +80,45 @@ class AdminPage extends ConsumerWidget {
           ),
           const Divider(height: 1, color: AppColors.hairline),
           Expanded(
-            child: queue.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(Gap.xxl),
-                  child: Text('Could not load the queue.\n$e',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.danger)),
-                ),
-              ),
-              data: (cases) {
-                if (cases.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(Gap.xxl),
-                      child: Text(
-                        'Nothing ${_filters[filter]!.toLowerCase()}.',
-                        style: const TextStyle(color: AppColors.inkMuted),
-                      ),
-                    ),
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(adminQueueProvider),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(Gap.lg),
-                    itemCount: cases.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: Gap.md),
-                    itemBuilder: (_, i) => _CaseCard(item: cases[i]),
+            // Pull-to-refresh wraps every branch: an admin who lands on an
+            // empty or failed queue still expects a pull to retry it.
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(adminQueueProvider),
+              color: AppColors.saffron,
+              child: queue.when(
+                loading: () => const TileListSkeleton(count: 4),
+                error: (e, _) => RefreshableBody(
+                  child: ErrorView(
+                    error: e,
+                    onRetry: () => ref.invalidate(adminQueueProvider),
                   ),
-                );
-              },
+                ),
+                data: (cases) {
+                  if (cases.isEmpty) {
+                    return RefreshableBody(
+                      child: EmptyState(
+                        icon: Icons.verified_outlined,
+                        title: 'Queue is clear',
+                        message:
+                            'Nothing ${_filters[filter]!.toLowerCase()}. Pull '
+                            'down to check again.',
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      Gap.lg,
+                      Gap.lg,
+                      Gap.lg,
+                      Gap.xxl,
+                    ),
+                    itemCount: cases.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
+                    itemBuilder: (_, i) => _CaseCard(item: cases[i]),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -153,14 +162,14 @@ class _CaseCardState extends ConsumerState<_CaseCard> {
           );
       ref.invalidate(adminQueueProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${item.fullName} marked $to.')),
+      showAppSnack(
+        context,
+        '${item.fullName} marked $to.',
+        tone: to == 'rejected' ? SnackTone.neutral : SnackTone.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e')),
-      );
+      showAppSnack(context, 'Failed: $e', tone: SnackTone.danger);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
