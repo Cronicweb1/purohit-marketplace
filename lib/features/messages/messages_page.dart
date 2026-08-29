@@ -88,9 +88,7 @@ class MessagesPage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          c.lastMessageAt == null
-                              ? ''
-                              : timeAgo(c.lastMessageAt!),
+                          timeAgo(c.lastMessageAt),
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.inkFaint,
