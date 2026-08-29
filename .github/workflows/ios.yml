@@ -27,6 +27,16 @@ jobs:
           flutter create . --project-name purohit --platforms=android,ios
           rm -f test/widget_test.dart
 
+      # ios/ is gitignored (regenerated above), so the camera/photo usage
+      # strings have to be injected every run. iOS kills the app on launch of
+      # the picker if these keys are missing - it is not a warning.
+      - name: Inject photo permission strings
+        run: |
+          P=ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Purohit Marketplace needs your photo library so you can attach your ID card and certificates.'" $P || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Purohit Marketplace needs the camera so you can photograph your ID card and certificates.'" $P || true
+          /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" $P
+
       # .env is a declared asset in pubspec.yaml — the build fails if absent.
       - name: Write .env
         env:

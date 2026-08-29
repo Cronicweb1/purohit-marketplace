@@ -271,6 +271,28 @@ class _CaseCardState extends ConsumerState<_CaseCard> {
               _Row('Languages', item.languages.join(', ')),
               const SizedBox(height: Gap.sm),
             ],
+            for (final d in item.kycDocuments) ...[
+              _ProofBlock(
+                icon: Icons.badge_outlined,
+                title: '${d.roleLabel} \u00b7 ${d.typeLabel}',
+                lines: [
+                  'File: ${d.storagePath}',
+                  if (d.sizeBytes != null) d.readableSize,
+                ],
+              ),
+              const SizedBox(height: Gap.sm),
+            ],
+            if (!item.hasIdentityDocument) ...[
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'No ID card on file. This purohit registered before ID '
+                  'upload existed, or skipped it.',
+                  style: TextStyle(fontSize: 13, color: AppColors.warning),
+                ),
+              ),
+              const SizedBox(height: Gap.sm),
+            ],
             for (final c in item.certificates) ...[
               _ProofBlock(
                 icon: Icons.workspace_premium_outlined,
