@@ -9,6 +9,20 @@ import '../core/supabase_providers.dart';
 /// per-user folder policies.
 const String kVerificationBucket = 'verification-docs';
 
+/// Avatars and portfolio photos. Public, unlike `verification-docs`: these
+/// are meant to be seen by strangers, and re-signing a URL for every tile in a
+/// portfolio grid is a request storm for no privacy gain.
+const String kProfileMediaBucket = 'profile-media';
+
+/// Same uid-first layout as the verification bucket, because the
+/// `profile_media_*` storage policies key on `(storage.foldername(name))[1]`.
+String profileMediaObjectPath({
+  required String uid,
+  required String slot,
+  String extension = 'jpg',
+}) =>
+    '$uid/${slot}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+
 /// Every storage policy on this bucket keys off `(storage.foldername(name))[1]`
 /// being the caller's uid, so the leading `uid/` segment is not cosmetic - get
 /// it wrong and the upload fails with a 403 that reads like a network error.
@@ -43,6 +57,11 @@ abstract class StorageRepository {
   });
 
   Future<void> remove({required String bucket, required String path});
+
+  /// Only meaningful for public buckets such as `profile-media`. Returns null
+  /// when storage is not configured, so callers fall back to a placeholder
+  /// instead of throwing mid-build.
+  String? publicUrl({required String bucket, required String path});
 }
 
 class SupabaseStorageRepository implements StorageRepository {
@@ -80,6 +99,12 @@ class SupabaseStorageRepository implements StorageRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  String? publicUrl({required String bucket, required String path}) {
+    if (!supabaseReady || path.isEmpty) return null;
+    return supabase.storage.from(bucket).getPublicUrl(path);
   }
 
   @override

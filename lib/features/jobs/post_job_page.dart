@@ -94,7 +94,9 @@ class _PostJobPageState extends ConsumerState<PostJobPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Posted. Verified purohits can see it now.')),
       );
-      context.go('/jobs/${job.id}');
+      // push, not go: /jobs/:id lives on the root navigator, so go() would
+      // replace the whole stack and strand the family with no way back.
+      context.push('/jobs/${job.id}');
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');

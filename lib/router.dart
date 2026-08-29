@@ -12,7 +12,10 @@ import 'features/jobs/job_detail_page.dart';
 import 'features/jobs/jobs_feed_page.dart';
 import 'features/jobs/my_work_page.dart';
 import 'features/jobs/post_job_page.dart';
+import 'features/messages/conversation_page.dart';
+import 'features/messages/messages_page.dart';
 import 'features/profile/profile_page.dart';
+import 'features/purohit/purohit_public_page.dart';
 import 'features/purohit/register_purohit_page.dart';
 import 'features/rituals/rituals_page.dart';
 import 'features/shell/home_shell.dart';
@@ -101,6 +104,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           jobId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
         ),
       ),
+      GoRoute(
+        path: '/purohit/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, state) => PurohitPublicPage(
+          panditId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/messages/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, state) => ConversationPage(
+          conversationId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             HomeShell(navigationShell: navigationShell),
@@ -122,6 +139,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
+          ]),
+          // Branch 4. Unconditional on purpose: both roles get Messages, so
+          // the branch list stays the same length for everyone and the index
+          // contract documented above holds.
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/messages', builder: (_, __) => const MessagesPage()),
           ]),
         ],
       ),

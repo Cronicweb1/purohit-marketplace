@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/session.dart';
+import '../../data/messages_repository.dart';
 
 /// The tab shell.
 ///
-/// Both roles share one `StatefulShellRoute` with four branches, because
+/// Both roles share one `StatefulShellRoute` with five branches, because
 /// go_router builds the branch list once at router-construction time and cannot
 /// rebuild it when the role changes. Instead the *destinations* are filtered per
 /// role and mapped back onto branch indexes. A family never sees "Find work"; a
@@ -26,6 +27,11 @@ class HomeShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionProvider);
     final isPurohit = session.isPurohit;
+    // Both roles get Messages, so this is read unconditionally. Null while the
+    // first fetch is in flight, which simply means no badge yet.
+    final unread = (ref.watch(unreadCountsProvider).value ?? const <int, int>{})
+        .values
+        .fold<int>(0, (a, b) => a + b);
 
     final destinations = <_Dest>[
       _Dest(
@@ -47,6 +53,13 @@ class HomeShell extends ConsumerWidget {
           selectedIcon: Icons.add_circle,
           label: 'Post',
         ),
+      _Dest(
+        branch: 4,
+        icon: Icons.chat_bubble_outline,
+        selectedIcon: Icons.chat_bubble,
+        label: 'Messages',
+        badge: unread == 0 ? null : '$unread',
+      ),
       const _Dest(
         branch: 3,
         icon: Icons.person_outline,
@@ -74,8 +87,15 @@ class HomeShell extends ConsumerWidget {
         destinations: [
           for (final d in destinations)
             NavigationDestination(
-              icon: Icon(d.icon),
-              selectedIcon: Icon(d.selectedIcon),
+              icon: d.badge == null
+                  ? Icon(d.icon)
+                  : Badge(label: Text(d.badge!), child: Icon(d.icon)),
+              selectedIcon: d.badge == null
+                  ? Icon(d.selectedIcon)
+                  : Badge(
+                      label: Text(d.badge!),
+                      child: Icon(d.selectedIcon),
+                    ),
               label: d.label,
             ),
         ],
@@ -90,10 +110,14 @@ class _Dest {
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    this.badge,
   });
 
   final int branch;
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+
+  /// Unread count, already formatted. Null hides the badge entirely.
+  final String? badge;
 }

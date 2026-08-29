@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../core/session.dart';
 import '../../data/applications_repository.dart';
 import '../../data/jobs_repository.dart';
+import '../../data/messages_repository.dart';
 import '../../models/application.dart';
 import '../../models/job.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
+import '../../widgets/user_avatar.dart';
 
 class JobDetailPage extends ConsumerWidget {
   const JobDetailPage({super.key, required this.jobId});
@@ -22,7 +25,22 @@ class JobDetailPage extends ConsumerWidget {
     final session = ref.watch(sessionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ceremony')),
+      appBar: AppBar(
+        title: const Text('Ceremony'),
+        // This route sits on the root navigator, so it can be reached either by
+        // a push (back pops) or by a go (nothing to pop - fall back to the
+        // list the user most likely came from).
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/my-work');
+            }
+          },
+        ),
+      ),
       body: job.when(
         loading: () => const DetailSkeleton(),
         error: (e, _) => ErrorView(
@@ -123,7 +141,7 @@ class _JobBody extends ConsumerWidget {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Gap.sm),
-          _Applicants(jobId: job.id),
+          _Applicants(job: job),
         ],
         const SizedBox(height: Gap.xxl),
       ],
@@ -132,13 +150,13 @@ class _JobBody extends ConsumerWidget {
 }
 
 class _Applicants extends ConsumerWidget {
-  const _Applicants({required this.jobId});
+  const _Applicants({required this.job});
 
-  final int jobId;
+  final Job job;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final apps = ref.watch(jobApplicationsProvider(jobId));
+    final apps = ref.watch(jobApplicationsProvider(job.id));
 
     return apps.when(
       loading: () => const TileSkeletonColumn(count: 2, padding: EdgeInsets.zero),
@@ -156,7 +174,7 @@ class _Applicants extends ConsumerWidget {
         }
         return Column(
           children: [
-            for (final a in list) _ApplicantTile(application: a),
+            for (final a in list) _ApplicantTile(application: a, job: job),
           ],
         );
       },
@@ -164,62 +182,214 @@ class _Applicants extends ConsumerWidget {
   }
 }
 
-class _ApplicantTile extends StatelessWidget {
-  const _ApplicantTile({required this.application});
+class _ApplicantTile extends ConsumerStatefulWidget {
+  const _ApplicantTile({required this.application, required this.job});
 
   final Application application;
+  final Job job;
+
+  @override
+  ConsumerState<_ApplicantTile> createState() => _ApplicantTileState();
+}
+
+class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
+  bool _busy = false;
+
+  Future<void> _openChat() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final id = await ref.read(messagesRepositoryProvider).openOrCreate(
+            jobId: widget.job.id,
+            panditId: widget.application.panditId,
+          );
+      ref.invalidate(conversationsProvider);
+      if (!mounted) return;
+      context.push('/messages/$id');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open chat: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _finalize() async {
+    if (_busy) return;
+    final a = widget.application;
+    final name = a.panditName ?? 'this purohit';
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm purohit'),
+        content: Text(
+          'Select $name for this ceremony?\n\n'
+          'Every other applicant is marked not selected, the ceremony moves to '
+          '"Purohit selected", and contact details are exchanged. This cannot '
+          'be undone from the app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(applicationsRepositoryProvider).finalize(
+            applicationId: a.id,
+            jobId: widget.job.id,
+          );
+      ref.invalidate(jobApplicationsProvider(widget.job.id));
+      ref.invalidate(jobDetailProvider(widget.job.id));
+      ref.invalidate(myJobsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$name is confirmed for this ceremony.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not confirm: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final a = application;
+    final a = widget.application;
+    final canFinalize = widget.job.status == JobStatus.open &&
+        a.status != ApplicationStatus.withdrawn &&
+        a.status != ApplicationStatus.rejected;
+
     return Card(
       margin: const EdgeInsets.only(bottom: Gap.sm),
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: AppColors.saffron.withValues(alpha: 0.16),
-              child: Text(
-                initialsOf(a.panditName ?? 'Purohit'),
-                style: const TextStyle(
-                  color: AppColors.saffronDark,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Column(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => context.push('/purohit/${a.panditId}'),
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    a.panditName ?? 'Purohit',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  UserAvatar(
+                    name: a.panditName ?? 'Purohit',
+                    imageUrl: a.panditAvatarUrl,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      if (a.panditExperienceYears != null)
-                        '${a.panditExperienceYears} yrs',
-                      if (a.quotedFee != null) 'quoted ${formatMoney(a.quotedFee)}',
-                      a.status.label,
-                    ].join(' · '),
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.inkMuted),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          a.panditName ?? 'Purohit',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          [
+                            if (a.panditExperienceYears != null)
+                              '${a.panditExperienceYears} yrs',
+                            a.status.label,
+                          ].join(' · '),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  if ((a.message ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: Gap.sm),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: AppColors.inkFaint,
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.md),
+              // The quote is the number the family actually decides on, so it
+              // gets its own row rather than being buried in the subtitle.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Gap.md,
+                  vertical: Gap.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.saffronTint,
+                  borderRadius: BorderRadius.circular(AppRadius.field),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.payments_outlined,
+                      size: 16,
+                      color: AppColors.saffronDark,
+                    ),
+                    const SizedBox(width: Gap.sm),
                     Text(
-                      a.message!.trim(),
-                      style: const TextStyle(fontSize: 13.5, height: 1.4),
+                      a.quotedFee == null
+                          ? 'No amount quoted'
+                          : 'Quoted ${formatMoney(a.quotedFee)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if ((a.message ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: Gap.sm),
+                Text(
+                  a.message!.trim(),
+                  style: const TextStyle(fontSize: 13.5, height: 1.4),
+                ),
+              ],
+              const SizedBox(height: Gap.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _openChat,
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      label: const Text('Message'),
+                    ),
+                  ),
+                  if (canFinalize) ...[
+                    const SizedBox(width: Gap.sm),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _busy ? null : _finalize,
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
+                        label: const Text('Select'),
+                      ),
                     ),
                   ],
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

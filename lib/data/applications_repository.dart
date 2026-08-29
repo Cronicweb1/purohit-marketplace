@@ -34,7 +34,8 @@ class ApplicationsRepository {
     final res = await supabase
         .from('applications')
         .select('id, job_id, pandit_id, message, quoted_fee, status, created_at, '
-            'pandit_profiles(experience_years, profiles(full_name))')
+            'pandit_profiles(experience_years, '
+            'profiles(full_name, avatar_url))')
         .eq('job_id', jobId)
         .order('created_at', ascending: false);
     return (res as List)
@@ -71,6 +72,42 @@ class ApplicationsRepository {
       if (message != null && message.trim().isNotEmpty) 'message': message.trim(),
       if (quotedFee != null) 'quoted_fee': quotedFee,
     });
+  }
+
+  /// The family picks one purohit and closes the job.
+  ///
+  /// Three writes, deliberately in this order:
+  ///   1. every other applicant -> `rejected`
+  ///   2. the chosen one        -> `selected`
+  ///   3. the job               -> `assigned` + `selected_application_id`
+  ///
+  /// Step 2 is what opens `v_job_contacts`, so it must not run before the
+  /// losers are cleared - two `selected` rows on one job would hand out two
+  /// sets of contact details. There is no transaction across PostgREST calls;
+  /// a failure between steps leaves the job open and is safe to retry.
+  ///
+  /// No new RLS was needed: `apps_update` already lets the job owner update
+  /// applications on their own job, and `jobs_update` already lets them update
+  /// the job.
+  Future<void> finalize({
+    required int applicationId,
+    required int jobId,
+  }) async {
+    await supabase
+        .from('applications')
+        .update({'status': 'rejected'})
+        .eq('job_id', jobId)
+        .neq('id', applicationId);
+
+    await supabase
+        .from('applications')
+        .update({'status': 'selected'})
+        .eq('id', applicationId);
+
+    await supabase.from('jobs').update({
+      'status': 'assigned',
+      'selected_application_id': applicationId,
+    }).eq('id', jobId);
   }
 }
 

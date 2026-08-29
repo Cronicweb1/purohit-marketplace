@@ -7,6 +7,7 @@ import '../../core/session.dart';
 import '../../data/reference_repository.dart';
 import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
+import 'profile_media.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -27,17 +28,9 @@ class ProfilePage extends ConsumerWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: AppColors.saffron.withValues(alpha: 0.16),
-                child: Text(
-                  initialsOf(profile?.fullName ?? 'Guest'),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.saffronDark,
-                  ),
-                ),
+              AvatarEditor(
+                name: profile?.fullName ?? 'Guest',
+                avatarUrl: profile?.avatarUrl,
               ),
               const SizedBox(width: Gap.lg),
               Expanded(
@@ -105,6 +98,20 @@ class ProfilePage extends ConsumerWidget {
               style: const TextStyle(
                   fontSize: 14, height: 1.5, color: AppColors.inkMuted),
             ),
+          ],
+          if (session.isPurohit && pandit != null) ...[
+            const SizedBox(height: Gap.xl),
+            const Text(
+              'Work photos',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: Gap.xs),
+            const Text(
+              'Families see these on your profile when you apply.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.inkMuted),
+            ),
+            const SizedBox(height: Gap.sm),
+            PortfolioEditor(panditId: pandit.id),
           ],
           const SizedBox(height: Gap.xxl),
           if (session.isPurohit)
