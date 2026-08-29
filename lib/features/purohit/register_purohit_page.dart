@@ -4,13 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/session.dart';
+import '../../core/supabase_providers.dart' show currentUserId;
+import '../../data/storage_repository.dart';
 import '../../data/reference_repository.dart';
 import '../../data/verification_repository.dart';
 import '../../data/languages.dart';
 import '../../models/city.dart';
 import '../../models/institution.dart';
+import '../../models/kyc_document.dart';
 import '../../models/ritual.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/image_upload_field.dart';
 import '../../widgets/pickers.dart';
 
 /// Registration for a purohit.
@@ -30,7 +34,9 @@ class RegisterPurohitPage extends ConsumerStatefulWidget {
       _RegisterPurohitPageState();
 }
 
-enum _Proof { certificate, guru }
+// Training proof used to be an either/or radio. It is now two independent
+// flags: a purohit with both a Gurukul certificate AND a living guru is the
+// strongest case we can get, and the old enum made that unrepresentable.
 
 class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
   final _formKey = GlobalKey<FormState>();
@@ -63,8 +69,22 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
   final _guruYears = TextEditingController();
   final _guruNotes = TextEditingController();
 
+  // Identity is compulsory; address proof is optional but becomes all-or-
+  // nothing once a type is picked, so half-filled rows never reach an admin.
+  KycDocType? _idType;
+  PickedImage? _idImage;
+  String? _idError;
+
+  KycDocType? _addressType;
+  PickedImage? _addressImage;
+  String? _addressError;
+
+  PickedImage? _certImage;
+
   City? _city;
-  _Proof _proof = _Proof.certificate;
+  bool _useCertificate = true;
+  bool _useGuru = false;
+  String? _proofError;
   final Set<int> _ritualIds = {};
   bool _prefilled = false;
   bool _saving = false;
@@ -129,6 +149,23 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
   String get _guruInstitutionName =>
       _guruInstManual ? _gurukulName.text.trim() : (_guruInst?.name ?? '');
 
+  String get _idTypeLabel => _idType?.label.toLowerCase() ?? 'ID card';
+
+  /// Uploads before any row is written, so a storage failure leaves no
+  /// half-registered purohit behind.
+  Future<String?> _upload(PickedImage? image, String slot) async {
+    if (image == null) return null;
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Not signed in.');
+    return ref.read(storageRepositoryProvider).upload(
+          bucket: kVerificationBucket,
+          path: verificationObjectPath(
+              uid: uid, slot: slot, extension: image.extension),
+          bytes: image.bytes,
+          contentType: image.contentType,
+        );
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -138,8 +175,31 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
       setState(() => _langError = 'Pick at least one language');
       return;
     }
-    if (_proof == _Proof.certificate && _institutionName.length < 3) {
-      setState(() => _error = 'Choose the institution that issued your certificate.');
+    if (!_useCertificate && !_useGuru) {
+      setState(() => _proofError =
+          'Pick at least one: a certificate, a guru reference, or both.');
+      return;
+    }
+    if (_useCertificate && _institutionName.length < 3) {
+      setState(() =>
+          _error = 'Choose the institution that issued your certificate.');
+      return;
+    }
+    if (_idType == null) {
+      setState(() => _idError = 'Choose which ID card you are submitting.');
+      return;
+    }
+    if (_idImage == null) {
+      setState(() => _idError = 'Attach a photo of your $_idTypeLabel.');
+      return;
+    }
+    if (_addressType != null && _addressImage == null) {
+      setState(() =>
+          _addressError = 'Attach a photo, or clear the address proof type.');
+      return;
+    }
+    if (_addressType == null && _addressImage != null) {
+      setState(() => _addressError = 'Choose which document this is.');
       return;
     }
 
@@ -165,14 +225,41 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
         await repo.setSpecialisations(_ritualIds.toList());
       }
 
-      if (_proof == _Proof.certificate) {
+      // Storage first. If the bucket rejects an image we fail here, before any
+      // kyc_documents / certificates row claims a file that does not exist.
+      final idPath = await _upload(_idImage, 'identity');
+      final addressPath = await _upload(_addressImage, 'address');
+      final certPath = await _upload(_certImage, 'certificate');
+
+      if (idPath != null && _idType != null) {
+        await repo.upsertKycDocument(
+          role: KycRole.identity,
+          docType: _idType!.code,
+          storagePath: idPath,
+          mimeType: _idImage?.contentType,
+          sizeBytes: _idImage?.sizeBytes,
+        );
+      }
+      if (addressPath != null && _addressType != null) {
+        await repo.upsertKycDocument(
+          role: KycRole.address,
+          docType: _addressType!.code,
+          storagePath: addressPath,
+          mimeType: _addressImage?.contentType,
+          sizeBytes: _addressImage?.sizeBytes,
+        );
+      }
+
+      if (_useCertificate) {
         await repo.addCertificate(
           institution: _institutionName,
           kind: _certKind,
           issuedOn: _issuedOn,
           documentUrl: _documentUrl.text,
+          storagePath: certPath,
         );
-      } else {
+      }
+      if (_useGuru) {
         await repo.addGuruReference(
           guruName: _guruName.text,
           guruPhone: _guruPhone.text,
@@ -360,34 +447,117 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
             ),
 
             const SizedBox(height: Gap.xl),
-            const _SectionTitle('Proof of training'),
+            const _SectionTitle('Identity'),
             const Text(
-              'Give us one of the two. A guru reference carries the same weight '
-              'as a certificate — many respected purohits never attended a '
-              'formal Gurukul.',
+              'A family is letting you into their home. We check who you are '
+              'before anyone can book you. These scans are private: only you '
+              'and a verifying admin can ever open them.',
               style: TextStyle(
                   fontSize: 13, height: 1.5, color: AppColors.inkMuted),
             ),
             const SizedBox(height: Gap.md),
-            Row(
+            PickerField<KycDocType>(
+              label: 'ID card type',
+              hint: 'Aadhaar, voter ID, PAN...',
+              value: _idType,
+              items: KycDocTypes.identity,
+              labelOf: (t) => t.label,
+              onChanged: (t) => setState(() {
+                _idType = t;
+                _idError = null;
+              }),
+            ),
+            const SizedBox(height: Gap.md),
+            ImageUploadField(
+              label: 'Photo of your ID card',
+              helper: 'Hold it flat in good light. Photos are shrunk to about '
+                  '200-400 KB before they leave your phone.',
+              value: _idImage,
+              errorText: _idError,
+              onChanged: (img) => setState(() {
+                _idImage = img;
+                _idError = null;
+              }),
+            ),
+
+            const SizedBox(height: Gap.xl),
+            const _SectionTitle('Address proof (optional)'),
+            const Text(
+              'Skip this for now if you like. Adding it usually gets your '
+              'application approved faster.',
+              style: TextStyle(
+                  fontSize: 13, height: 1.5, color: AppColors.inkMuted),
+            ),
+            const SizedBox(height: Gap.md),
+            PickerField<KycDocType>(
+              label: 'Address proof type',
+              hint: 'Aadhaar, electricity bill...',
+              value: _addressType,
+              items: KycDocTypes.address,
+              labelOf: (t) => t.label,
+              onChanged: (t) => setState(() {
+                _addressType = t;
+                _addressError = null;
+              }),
+            ),
+            const SizedBox(height: Gap.md),
+            ImageUploadField(
+              label: 'Photo of your address proof',
+              helper: 'A bill has to be from the last three months.',
+              value: _addressImage,
+              errorText: _addressError,
+              onChanged: (img) => setState(() {
+                _addressImage = img;
+                _addressError = null;
+              }),
+            ),
+
+            const SizedBox(height: Gap.xl),
+            const _SectionTitle('Proof of training'),
+            const Text(
+              'Give us at least one. A guru reference carries the same weight '
+              'as a certificate - many respected purohits never attended a '
+              'formal Gurukul. Having both is stronger than either alone.',
+              style: TextStyle(
+                  fontSize: 13, height: 1.5, color: AppColors.inkMuted),
+            ),
+            const SizedBox(height: Gap.md),
+            Wrap(
+              spacing: Gap.sm,
+              runSpacing: Gap.sm,
               children: [
-                ChoiceChip(
+                FilterChip(
                   label: const Text('Certificate'),
-                  selected: _proof == _Proof.certificate,
-                  onSelected: (_) =>
-                      setState(() => _proof = _Proof.certificate),
+                  selected: _useCertificate,
+                  onSelected: (v) => setState(() {
+                    _useCertificate = v;
+                    _proofError = null;
+                  }),
                 ),
-                const SizedBox(width: Gap.sm),
-                ChoiceChip(
+                FilterChip(
                   label: const Text('Guru reference'),
-                  selected: _proof == _Proof.guru,
-                  onSelected: (_) => setState(() => _proof = _Proof.guru),
+                  selected: _useGuru,
+                  onSelected: (v) => setState(() {
+                    _useGuru = v;
+                    _proofError = null;
+                  }),
                 ),
               ],
             ),
+            if (_proofError != null) ...[
+              const SizedBox(height: Gap.sm),
+              Text(_proofError!,
+                  style:
+                      const TextStyle(fontSize: 12, color: AppColors.danger)),
+            ],
             const SizedBox(height: Gap.md),
-            if (_proof == _Proof.certificate) ..._certificateFields()
-            else ..._guruFields(),
+            if (_useCertificate) ..._certificateFields(),
+            if (_useCertificate && _useGuru) ...[
+              const SizedBox(height: Gap.lg),
+              const Divider(color: AppColors.hairline),
+              const SizedBox(height: Gap.lg),
+            ],
+            if (_useGuru) ..._guruFields(),
 
             if (_error != null) ...[
               const SizedBox(height: Gap.lg),
@@ -432,7 +602,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           manual: _instManual,
           picked: _inst,
           controller: _institution,
-          isRequired: _proof == _Proof.certificate,
+          isRequired: _useCertificate,
           onPicked: (i) => setState(() {
             _inst = i;
             _error = null;
@@ -470,20 +640,31 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           ),
         ),
         const SizedBox(height: Gap.md),
+        ImageUploadField(
+          label: 'Photo of the certificate',
+          helper: 'Optional if you paste a link below, but a photo is faster '
+              'for an admin to check.',
+          value: _certImage,
+          onChanged: (img) => setState(() => _certImage = img),
+        ),
+        const SizedBox(height: Gap.md),
         TextFormField(
           controller: _documentUrl,
           keyboardType: TextInputType.url,
           decoration: const InputDecoration(
-            labelText: 'Link to a scan of the certificate',
+            labelText: 'Or paste a link to a scan',
             hintText: 'https://drive.google.com/...',
             helperText: 'Upload the scan to Google Drive or DigiLocker, set the '
                 'link to "anyone with the link can view", then paste it here.',
             helperMaxLines: 3,
           ),
           validator: (v) {
-            if (_proof != _Proof.certificate) return null;
+            if (!_useCertificate) return null;
             final t = (v ?? '').trim();
-            if (t.isEmpty) return 'An admin cannot verify a certificate they cannot see.';
+            if (t.isEmpty && _certImage != null) return null;
+            if (t.isEmpty) {
+              return 'Attach a photo above, or paste a link here.';
+            }
             final uri = Uri.tryParse(t);
             if (uri == null ||
                 !uri.hasScheme ||
@@ -563,7 +744,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
             hintText: 'Pandit Shivkumar Shastri',
           ),
           validator: (v) =>
-              _proof == _Proof.guru && (v == null || v.trim().length < 3)
+              _useGuru && (v == null || v.trim().length < 3)
                   ? "Please enter your guru's name"
                   : null,
         ),
@@ -579,7 +760,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
             helperMaxLines: 3,
           ),
           validator: (v) {
-            if (_proof != _Proof.guru) return null;
+            if (!_useGuru) return null;
             final t = (v ?? '').trim();
             if (t.isEmpty) return "Your guru's phone number is required";
             final digits = t.replaceAll(RegExp(r'[^0-9]'), '');
