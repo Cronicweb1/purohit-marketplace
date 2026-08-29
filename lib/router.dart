@@ -21,6 +21,7 @@ import 'features/messages/messages_page.dart';
 import 'features/profile/profile_page.dart';
 import 'features/purohit/purohit_public_page.dart';
 import 'features/purohit/register_purohit_page.dart';
+import 'features/rituals/ritual_detail_page.dart';
 import 'features/rituals/rituals_page.dart';
 import 'features/shell/home_shell.dart';
 import 'models/profile.dart';
@@ -67,6 +68,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         '/admin-sign-in',
       };
       final isPublic = publicRoutes.contains(loc);
+
+      // Ceremony detail sits between Browse and Post, so it has to be readable
+      // in every session state: signed-out visitors (that is the entire point
+      // of '/browse') and signed-in families alike. It cannot live in
+      // `publicRoutes`, which is an exact-match set, and the `ready` branch
+      // below would otherwise bounce it to '/jobs'.
+      if (loc.startsWith('/ceremony/')) {
+        return status == SessionStatus.unconfigured ? '/setup' : null;
+      }
 
       switch (status) {
         case SessionStatus.unconfigured:
@@ -144,6 +154,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/browse',
         builder: (_, __) => const Scaffold(body: RitualsView(standalone: true)),
+      ),
+      // Pushed on the root navigator so it covers the shell: tapping a ceremony
+      // in Browse should feel like opening a page, not switching tabs.
+      GoRoute(
+        path: '/ceremony/:slug',
+        parentNavigatorKey: _rootKey,
+        builder: (_, state) =>
+            RitualDetailPage(slug: state.pathParameters['slug'] ?? ''),
       ),
       GoRoute(
         path: '/jobs/:id',

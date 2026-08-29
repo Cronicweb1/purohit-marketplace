@@ -107,14 +107,10 @@ class _RitualsViewState extends ConsumerState<RitualsView> {
                     separatorBuilder: (_, __) => const SizedBox(height: Gap.sm),
                     itemBuilder: (ctx, i) => _RitualTile(
                       ritual: filtered[i],
-                      onTap: () {
-                        if (session.status == SessionStatus.ready &&
-                            !session.isPurohit) {
-                          context.go('/post?ritual=${filtered[i].id}');
-                        } else {
-                          context.go('/sign-in');
-                        }
-                      },
+                      // Straight to the ceremony page, which explains the rite
+                      // and carries the post/sign-in call to action itself.
+                      onTap: () =>
+                          context.push('/ceremony/${filtered[i].slug}'),
                     ),
                   ),
                 );
