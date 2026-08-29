@@ -121,9 +121,14 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   Future<void> _createAccount() async {
     if (!_begin()) return;
     try {
+      // The signup trigger reads this metadata to stamp `account_type` on the
+      // new profile row. Without it the account would be born as a family
+      // account and `pandit_profiles_require_purohit` would then refuse the
+      // listing this door exists to create.
       final res = await supabase.auth.signUp(
         email: _email.text.trim(),
         password: _password.text,
+        data: {'account_type': UserRole.purohit.wire},
       );
       _rememberIntent();
       if (!mounted) return;
