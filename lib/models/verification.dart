@@ -1,3 +1,5 @@
+import 'kyc_document.dart';
+
 /// Proof-of-training records shown to an admin during verification.
 ///
 /// Two independent paths exist on purpose: many practising purohits never
@@ -23,6 +25,11 @@ class Certificate {
 
   bool get hasDocument =>
       storagePath.isNotEmpty && storagePath != 'pending-upload';
+
+  /// True when the scan lives in our own private bucket rather than being a
+  /// link to somebody else's Drive.
+  bool get isStoredObject =>
+      storageProvider == 'supabase' && hasDocument;
 
   /// The row only ever stores a path/URL, never the file itself.
   String? get documentUrl =>
@@ -89,6 +96,7 @@ class VerificationCase {
     this.languages = const [],
     this.certificates = const [],
     this.guruReferences = const [],
+    this.kycDocuments = const [],
     this.submittedAt,
   });
 
@@ -103,10 +111,29 @@ class VerificationCase {
   final List<String> languages;
   final List<Certificate> certificates;
   final List<GuruReference> guruReferences;
+  final List<KycDocument> kycDocuments;
   final DateTime? submittedAt;
 
   /// An admin should never approve someone with neither proof on file.
   bool get hasProof => certificates.isNotEmpty || guruReferences.isNotEmpty;
+
+  KycDocument? get identityDocument {
+    for (final d in kycDocuments) {
+      if (d.isIdentity) return d;
+    }
+    return null;
+  }
+
+  KycDocument? get addressDocument {
+    for (final d in kycDocuments) {
+      if (!d.isIdentity) return d;
+    }
+    return null;
+  }
+
+  /// Training proof says someone can perform the ceremony. This says we know
+  /// who they are - a separate question, and the one a family cares about.
+  bool get hasIdentityDocument => identityDocument != null;
 
   static VerificationCase fromMap(Map<String, dynamic> m) {
     final profile = m['profiles'] as Map<String, dynamic>?;
@@ -125,6 +152,9 @@ class VerificationCase {
           .toList(),
       guruReferences: ((m['guru_references'] as List?) ?? const [])
           .map((e) => GuruReference.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList(),
+      kycDocuments: ((m['kyc_documents'] as List?) ?? const [])
+          .map((e) => KycDocument.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList(),
       submittedAt: m['created_at'] == null
           ? null

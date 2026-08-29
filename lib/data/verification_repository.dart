@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/supabase_providers.dart';
+import '../models/kyc_document.dart';
 import '../models/verification.dart';
 
 /// Everything the purohit-registration flow and the admin verification queue
@@ -22,7 +23,8 @@ class VerificationRepository {
       'profiles(full_name, avatar_url), '
       'cities(name, state), '
       'certificates(id, kind, institution, issued_on, storage_provider, storage_path), '
-      'guru_references(id, guru_name, guru_phone, gurukul_name, years_studied, notes)';
+      'guru_references(id, guru_name, guru_phone, gurukul_name, years_studied, notes), '
+      'kyc_documents(id, doc_role, doc_type, storage_provider, storage_path, mime_type, size_bytes, created_at)';
 
   // ------------------------------------------------------------- purohit side
 
@@ -82,6 +84,11 @@ class VerificationRepository {
     String kind = 'gurukul',
     DateTime? issuedOn,
     String? documentUrl,
+
+    /// Object key in the private `verification-docs` bucket. When present it
+    /// wins over [documentUrl]: our own copy cannot be revoked or edited by
+    /// the purohit after an admin has looked at it.
+    String? storagePath,
   }) async {
     if (!supabaseReady) return;
     final uid = currentUserId;
@@ -90,14 +97,29 @@ class VerificationRepository {
     // The UI now requires a link, but keep the 'pending' branch: an admin
     // adding a paper certificate on someone's behalf has no URL to give.
     final url = (documentUrl ?? '').trim();
+    final path = (storagePath ?? '').trim();
+
+    final String provider;
+    final String location;
+    if (path.isNotEmpty) {
+      provider = 'supabase';
+      location = path;
+    } else if (url.isNotEmpty) {
+      provider = 'external_link';
+      location = url;
+    } else {
+      provider = 'pending';
+      location = 'pending-upload';
+    }
+
     await supabase.from('certificates').insert({
       'pandit_id': uid,
       'kind': kind,
       'institution': institution.trim(),
       if (issuedOn != null)
         'issued_on': issuedOn.toIso8601String().split('T').first,
-      'storage_provider': url.isEmpty ? 'pending' : 'external_link',
-      'storage_path': url.isEmpty ? 'pending-upload' : url,
+      'storage_provider': provider,
+      'storage_path': location,
     });
   }
 
@@ -126,6 +148,46 @@ class VerificationRepository {
       if (yearsStudied != null) 'years_studied': yearsStudied,
       if ((notes ?? '').trim().isNotEmpty) 'notes': notes!.trim(),
     });
+  }
+
+  /// Upsert, not insert: `kyc_documents_one_per_role` allows exactly one live
+  /// document per role, so re-submitting a clearer photo replaces the old row
+  /// instead of leaving an admin to guess which scan is current.
+  Future<void> upsertKycDocument({
+    required KycRole role,
+    required String docType,
+    required String storagePath,
+    String? mimeType,
+    int? sizeBytes,
+  }) async {
+    if (!supabaseReady) return;
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Not signed in.');
+
+    await supabase.from('kyc_documents').upsert({
+      'pandit_id': uid,
+      'doc_role': role.code,
+      'doc_type': docType,
+      'storage_provider': 'supabase',
+      'storage_path': storagePath,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
+    }, onConflict: 'pandit_id,doc_role');
+  }
+
+  Future<List<KycDocument>> myKycDocuments() async {
+    if (!supabaseReady) return const [];
+    final uid = currentUserId;
+    if (uid == null) return const [];
+    final res = await supabase
+        .from('kyc_documents')
+        .select('id, doc_role, doc_type, storage_provider, storage_path, '
+            'mime_type, size_bytes, created_at')
+        .eq('pandit_id', uid)
+        .order('created_at');
+    return (res as List)
+        .map((e) => KycDocument.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
   }
 
   Future<List<Certificate>> myCertificates() async {
@@ -216,4 +278,8 @@ final myCertificatesProvider = FutureProvider<List<Certificate>>(
 
 final myGuruReferencesProvider = FutureProvider<List<GuruReference>>(
   (ref) => ref.watch(verificationRepositoryProvider).myGuruReferences(),
+);
+
+final myKycDocumentsProvider = FutureProvider<List<KycDocument>>(
+  (ref) => ref.watch(verificationRepositoryProvider).myKycDocuments(),
 );
