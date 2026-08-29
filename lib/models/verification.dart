@@ -92,6 +92,7 @@ class VerificationCase {
     required this.status,
     this.cityLabel,
     this.experienceYears,
+    this.dob,
     this.bio,
     this.languages = const [],
     this.certificates = const [],
@@ -107,6 +108,9 @@ class VerificationCase {
   final String status;
   final String? cityLabel;
   final int? experienceYears;
+
+  /// Null for purohits who registered before migration 0007.
+  final DateTime? dob;
   final String? bio;
   final List<String> languages;
   final List<Certificate> certificates;
@@ -144,6 +148,7 @@ class VerificationCase {
       status: m['status'] as String? ?? 'pending',
       cityLabel: city == null ? null : '${city['name']}, ${city['state']}',
       experienceYears: (m['experience_years'] as num?)?.toInt(),
+      dob: m['dob'] == null ? null : DateTime.tryParse(m['dob'].toString()),
       bio: m['bio'] as String?,
       languages:
           (m['languages'] as List?)?.map((e) => e.toString()).toList() ?? const [],

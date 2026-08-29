@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/session.dart';
 import '../../data/verification_repository.dart';
+import '../../models/profile.dart' show formatDate, ageFrom;
 import '../../models/verification.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/feedback.dart';
@@ -37,7 +38,14 @@ class AdminPage extends ConsumerWidget {
 
     if (!session.isAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Admin')),
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Back to the app',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/jobs'),
+          ),
+          title: const Text('Admin'),
+        ),
         body: const _NotAnAdmin(),
       );
     }
@@ -47,12 +55,50 @@ class AdminPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // /admin sits outside the StatefulShellRoute, so there is no bottom
+        // navigation bar here, and admin sign-in lands with `go` rather than
+        // `push`, so there is no back stack either. Without these two controls
+        // an admin who signs in through /admin-sign-in has no way out of this
+        // screen short of killing the app.
+        leading: IconButton(
+          tooltip: 'Back to the app',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/jobs'),
+        ),
         title: const Text('Verification console'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(adminQueueProvider),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            onSelected: (value) {
+              if (value == 'app') {
+                context.go('/jobs');
+              } else {
+                ref.read(sessionProvider.notifier).signOut();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'app',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.home_outlined),
+                  title: Text('Back to the app'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'signout',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.logout),
+                  title: Text('Sign out'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -266,6 +312,11 @@ class _CaseCardState extends ConsumerState<_CaseCard> {
                         fontSize: 13, height: 1.5, color: AppColors.inkMuted)),
               ),
               const SizedBox(height: Gap.md),
+            ],
+            if (item.dob != null) ...[
+              _Row('Date of birth',
+                  '${formatDate(item.dob!)} (${ageFrom(item.dob!)} years)'),
+              const SizedBox(height: Gap.sm),
             ],
             if (item.languages.isNotEmpty) ...[
               _Row('Languages', item.languages.join(', ')),

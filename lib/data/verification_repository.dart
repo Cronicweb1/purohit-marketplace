@@ -18,7 +18,7 @@ class VerificationRepository {
   const VerificationRepository();
 
   static const _caseColumns =
-      'id, status, bio, experience_years, base_fee, service_radius_km, '
+      'id, status, dob, bio, experience_years, base_fee, service_radius_km, '
       'languages, is_available, created_at, '
       'profiles(full_name, avatar_url), '
       'cities(name, state), '
@@ -35,6 +35,11 @@ class VerificationRepository {
   Future<void> registerAsPurohit({
     required String fullName,
     int? cityId,
+
+    /// Postgres `date` rejects a full ISO timestamp with an offset, so this is
+    /// serialised as `yyyy-MM-dd` below - the same trick `jobs_repository`
+    /// uses for `ceremony_date`.
+    DateTime? dob,
     String? bio,
     int? experienceYears,
     int? serviceRadiusKm,
@@ -54,6 +59,7 @@ class VerificationRepository {
     await supabase.from('pandit_profiles').upsert({
       'id': uid,
       if (cityId != null) 'city_id': cityId,
+      if (dob != null) 'dob': dob.toIso8601String().split('T').first,
       if ((bio ?? '').trim().isNotEmpty) 'bio': bio!.trim(),
       if (experienceYears != null) 'experience_years': experienceYears,
       if (serviceRadiusKm != null) 'service_radius_km': serviceRadiusKm,
