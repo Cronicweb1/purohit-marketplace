@@ -57,24 +57,6 @@ class Profile {
       );
 }
 
-/// Formats a date the way it appears on every Indian ID document.
-String formatDate(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}/'
-    '${d.month.toString().padLeft(2, '0')}/'
-    '${d.year}';
-
-/// Whole years elapsed, birthday-aware. Used everywhere we show an age rather
-/// than a raw date of birth - a family booking a purohit has no business
-/// knowing the exact day.
-int ageFrom(DateTime dob, {DateTime? now}) {
-  final today = now ?? DateTime.now();
-  var years = today.year - dob.year;
-  final hadBirthday = today.month > dob.month ||
-      (today.month == dob.month && today.day >= dob.day);
-  if (!hadBirthday) years -= 1;
-  return years;
-}
-
 class PanditProfile {
   const PanditProfile({
     required this.id,

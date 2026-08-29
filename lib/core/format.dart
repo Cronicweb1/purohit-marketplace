@@ -27,6 +27,17 @@ String formatDate(DateTime? d) {
   return d.year == DateTime.now().year ? _dayMonth.format(d) : _dayMonthYear.format(d);
 }
 
+/// Whole years elapsed, birthday-aware. Shown next to a date of birth so a
+/// reviewer does not have to do the arithmetic in their head.
+int ageFrom(DateTime dob, {DateTime? now}) {
+  final today = now ?? DateTime.now();
+  var years = today.year - dob.year;
+  final hadBirthday = today.month > dob.month ||
+      (today.month == dob.month && today.day >= dob.day);
+  if (!hadBirthday) years -= 1;
+  return years;
+}
+
 /// A ritual may run over several days (Vivaha), so a job shows a range.
 String formatDateRange(DateTime start, DateTime? end) {
   if (end == null || end == start) return formatDate(start);

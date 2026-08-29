@@ -12,7 +12,7 @@ import '../../data/languages.dart';
 import '../../models/city.dart';
 import '../../models/institution.dart';
 import '../../models/kyc_document.dart';
-import '../../models/profile.dart' show formatDate, ageFrom;
+import '../../core/format.dart';
 import '../../models/ritual.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/image_upload_field.dart';
@@ -883,7 +883,7 @@ class _DateField extends StatelessWidget {
           suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
         ),
         child: Text(
-          value == null ? hint : formatDate(value!),
+          value == null ? hint : formatDate(value),
           style: TextStyle(
             color: value == null ? AppColors.inkFaint : AppColors.ink,
           ),

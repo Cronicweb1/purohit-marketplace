@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/session.dart';
 import '../../data/verification_repository.dart';
-import '../../models/profile.dart' show formatDate, ageFrom;
+import '../../core/format.dart';
 import '../../models/verification.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/feedback.dart';
