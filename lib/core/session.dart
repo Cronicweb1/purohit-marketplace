@@ -42,12 +42,22 @@ class SessionState {
   /// `public.is_admin()` in RLS and by the `guard_pandit_status` trigger.
   final bool isAdmin;
 
-  /// Role is derived from the existence of a `pandit_profiles` row rather than
-  /// stored on `profiles`. `auth.users.app_metadata` would be the "correct"
-  /// place but is not client-writable, and `user_metadata` is client-writable
-  /// and therefore useless for authorisation. The row is what `jobs_read`
-  /// checks, so deriving from it keeps UI and RLS in lockstep.
-  UserRole get role => pandit == null ? UserRole.family : UserRole.purohit;
+  /// `profiles.account_type` is the primary answer, because a purohit who has
+  /// only just registered has made their choice but does not own a
+  /// `pandit_profiles` row yet — deriving from the row alone would drop them
+  /// into the family app. The row is still honoured as a fallback so accounts
+  /// created before the column existed keep working.
+  ///
+  /// `user_metadata` is client-writable and therefore useless for
+  /// authorisation, but `account_type` is not: `guard_account_type` pins it
+  /// after the signup trigger writes it, so this stays in lockstep with RLS.
+  UserRole get role => profile?.accountType == UserRole.purohit || pandit != null
+      ? UserRole.purohit
+      : UserRole.family;
+
+  /// True once a purohit has an actual listing. Registration creates the
+  /// account first and the listing second, so the two are not the same thing.
+  bool get hasPanditListing => pandit != null;
 
   bool get isPurohit => role == UserRole.purohit;
 
@@ -110,7 +120,8 @@ class SessionController extends Notifier<SessionState> {
     try {
       final profileRow = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, city_id, locale')
+          .select('id, full_name, avatar_url, city_id, locale, '
+              'account_type, phone')
           .eq('id', user.id)
           .maybeSingle();
 

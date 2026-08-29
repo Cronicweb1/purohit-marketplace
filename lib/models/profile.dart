@@ -1,13 +1,22 @@
 /// Which side of the marketplace the signed-in user is on.
 ///
-/// Deliberately NOT a `profiles.role` column. The source of truth is whether a
-/// `pandit_profiles` row exists for this user — which is exactly what the
-/// `jobs_read` RLS policy checks, so the UI and the database can never disagree.
+/// Originally derived purely from the existence of a `pandit_profiles` row.
+/// That still gates the jobs feed, but registration now needs the answer
+/// *before* any purohit row exists — a brand new purohit has picked their side
+/// and must not be dropped into the family app while their listing is empty.
+/// So `profiles.account_type` records the choice at signup and a database
+/// trigger makes it permanent, which is what enforces one email, one role.
 enum UserRole {
   family,
   purohit;
 
   String get label => this == UserRole.family ? 'Family' : 'Purohit';
+
+  /// The value stored in `profiles.account_type` and sent as signup metadata.
+  String get wire => this == UserRole.purohit ? 'purohit' : 'family';
+
+  static UserRole parse(String? v) =>
+      v == 'purohit' ? UserRole.purohit : UserRole.family;
 }
 
 /// Mirrors `verification_status`. Only `approved` purohits are publicly listed
@@ -40,6 +49,8 @@ class Profile {
     this.avatarUrl,
     this.cityId,
     this.locale = 'en',
+    this.accountType = UserRole.family,
+    this.phone,
   });
 
   final String id;
@@ -48,12 +59,20 @@ class Profile {
   final int? cityId;
   final String locale;
 
+  /// Chosen at registration and immutable afterwards — `guard_account_type`
+  /// raises if anything but an admin tries to change it. This is what stops an
+  /// email registered as a family account from also becoming a purohit.
+  final UserRole accountType;
+  final String? phone;
+
   static Profile fromMap(Map<String, dynamic> m) => Profile(
         id: m['id'] as String,
         fullName: m['full_name'] as String? ?? '',
         avatarUrl: m['avatar_url'] as String?,
         cityId: (m['city_id'] as num?)?.toInt(),
         locale: m['locale'] as String? ?? 'en',
+        accountType: UserRole.parse(m['account_type'] as String?),
+        phone: m['phone'] as String?,
       );
 }
 

@@ -6,12 +6,16 @@ import 'core/session.dart';
 import 'features/admin/admin_page.dart';
 import 'features/admin/admin_sign_in_page.dart';
 import 'features/auth/onboarding_page.dart';
+import 'features/auth/role_register_page.dart';
+import 'features/auth/role_sign_in_page.dart';
 import 'features/auth/sign_in_page.dart';
 import 'features/auth/verify_otp_page.dart';
 import 'features/jobs/job_detail_page.dart';
 import 'features/jobs/jobs_feed_page.dart';
 import 'features/jobs/my_work_page.dart';
 import 'features/jobs/post_job_page.dart';
+import 'features/landing/landing_page.dart';
+import 'features/landing/role_gate_page.dart';
 import 'features/messages/conversation_page.dart';
 import 'features/messages/messages_page.dart';
 import 'features/profile/profile_page.dart';
@@ -19,6 +23,7 @@ import 'features/purohit/purohit_public_page.dart';
 import 'features/purohit/register_purohit_page.dart';
 import 'features/rituals/rituals_page.dart';
 import 'features/shell/home_shell.dart';
+import 'models/profile.dart';
 import 'theme/app_theme.dart';
 
 /// Branch indexes are a contract with [HomeShell], which hard-codes them.
@@ -35,7 +40,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: '/jobs',
+    // The marketing page. Signed-in users never see it: the `ready`
+    // branch of the redirect below bounces '/' straight to '/jobs'.
+    initialLocation: '/',
     refreshListenable: refresh,
     redirect: (context, state) {
       final status = ref.read(sessionProvider).status;
@@ -43,7 +50,17 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // `/admin-sign-in` is public for the same reason `/sign-in` is: you have
       // to reach it before you have a session.
+      // The whole landing funnel is public by necessity — it is how a visitor
+      // reaches a login form in the first place. Omitting any of these bounces
+      // signed-out visitors to '/sign-in' the moment they tap a button.
       const publicRoutes = {
+        '/',
+        '/start/user',
+        '/start/purohit',
+        '/register/user',
+        '/register/purohit',
+        '/login/user',
+        '/login/purohit',
         '/sign-in',
         '/verify',
         '/browse',
@@ -61,8 +78,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         case SessionStatus.needsOnboarding:
           return loc == '/onboarding' ? null : '/onboarding';
         case SessionStatus.ready:
-          // '/' is not a real route — VerifyOtpPage lands there and lets the
-          // redirect decide, so it must resolve or the user hits "Not found".
+          // Signed in, so the landing funnel and the login forms have nothing
+          // left to offer. VerifyOtpPage also lands on '/' and lets this decide.
           if (loc == '/' ||
               loc == '/onboarding' ||
               loc == '/setup' ||
@@ -74,6 +91,37 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/setup', builder: (_, __) => const _SetupPage()),
+      GoRoute(path: '/', builder: (_, __) => const LandingPage()),
+
+      // Two doors, kept as separate literal paths rather than one '/:role'
+      // route so they can sit in the `publicRoutes` set above, which matches on
+      // the resolved location.
+      GoRoute(
+        path: '/start/user',
+        builder: (_, __) => const RoleGatePage(role: UserRole.family),
+      ),
+      GoRoute(
+        path: '/start/purohit',
+        builder: (_, __) => const RoleGatePage(role: UserRole.purohit),
+      ),
+      GoRoute(
+        path: '/register/user',
+        builder: (_, __) => const RoleRegisterPage(role: UserRole.family),
+      ),
+      GoRoute(
+        path: '/register/purohit',
+        builder: (_, __) => const RoleRegisterPage(role: UserRole.purohit),
+      ),
+      GoRoute(
+        path: '/login/user',
+        builder: (_, __) => const RoleSignInPage(role: UserRole.family),
+      ),
+      GoRoute(
+        path: '/login/purohit',
+        builder: (_, __) => const RoleSignInPage(role: UserRole.purohit),
+      ),
+
+      // Kept for the admin console and for any link already in the wild.
       GoRoute(path: '/sign-in', builder: (_, __) => const SignInPage()),
       GoRoute(
         path: '/verify',
