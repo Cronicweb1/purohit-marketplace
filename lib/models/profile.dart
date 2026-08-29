@@ -61,6 +61,7 @@ class PanditProfile {
   const PanditProfile({
     required this.id,
     required this.status,
+    this.dob,
     this.bio,
     this.experienceYears,
     this.baseFee,
@@ -71,6 +72,9 @@ class PanditProfile {
 
   final String id;
   final VerificationStatus status;
+
+  /// Null for purohits who registered before migration 0007.
+  final DateTime? dob;
   final String? bio;
   final int? experienceYears;
   final num? baseFee;
@@ -83,6 +87,7 @@ class PanditProfile {
   static PanditProfile fromMap(Map<String, dynamic> m) => PanditProfile(
         id: m['id'] as String,
         status: VerificationStatus.parse(m['status'] as String?),
+        dob: m['dob'] == null ? null : DateTime.tryParse(m['dob'].toString()),
         bio: m['bio'] as String?,
         experienceYears: (m['experience_years'] as num?)?.toInt(),
         baseFee: m['base_fee'] == null ? null : num.tryParse(m['base_fee'].toString()),

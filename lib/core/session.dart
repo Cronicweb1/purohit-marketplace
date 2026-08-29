@@ -126,7 +126,7 @@ class SessionController extends Notifier<SessionState> {
       final panditRow = await supabase
           .from('pandit_profiles')
           .select(
-            'id, status, bio, experience_years, base_fee, '
+            'id, status, dob, bio, experience_years, base_fee, '
             'service_radius_km, languages, is_available',
           )
           .eq('id', user.id)

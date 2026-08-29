@@ -12,6 +12,7 @@ import '../../data/languages.dart';
 import '../../models/city.dart';
 import '../../models/institution.dart';
 import '../../models/kyc_document.dart';
+import '../../core/format.dart';
 import '../../models/ritual.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/image_upload_field.dart';
@@ -82,6 +83,12 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
   PickedImage? _certImage;
 
   City? _city;
+
+  /// Required for new registrations. Nullable in the database only so that
+  /// purohits who registered before migration 0007 are not locked out.
+  DateTime? _dob;
+  String? _dobError;
+
   bool _useCertificate = true;
   bool _useGuru = false;
   String? _proofError;
@@ -126,6 +133,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
       _name.text = profile.fullName;
     }
     if (pandit != null) {
+      _dob = pandit.dob;
       _bio.text = pandit.bio ?? '';
       if (pandit.experienceYears != null) {
         _years.text = pandit.experienceYears.toString();
@@ -140,6 +148,12 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           ..addAll(pandit.languages);
       }
     }
+  }
+
+  /// The most recent birth date that still clears the 18-year floor.
+  DateTime get _eighteenYearsAgo {
+    final n = DateTime.now();
+    return DateTime(n.year - 18, n.month, n.day);
   }
 
   /// Whichever of the picker or the free-text box is actually in play.
@@ -171,6 +185,10 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
 
     // Two checks the Form can not run for us: MultiPickerField and PickerField
     // are not FormFields, so their emptiness has to be caught by hand.
+    if (_dob == null) {
+      setState(() => _dobError = 'Enter your date of birth.');
+      return;
+    }
     if (_languageCodes.isEmpty) {
       setState(() => _langError = 'Pick at least one language');
       return;
@@ -214,6 +232,7 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
       await repo.registerAsPurohit(
         fullName: _name.text,
         cityId: _city?.id,
+        dob: _dob,
         bio: _bio.text,
         experienceYears: int.tryParse(_years.text.trim()),
         serviceRadiusKm: int.tryParse(_radius.text.trim()),
@@ -324,6 +343,27 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
               validator: (v) => (v == null || v.trim().length < 3)
                   ? 'Please enter your full name'
                   : null,
+            ),
+            const SizedBox(height: Gap.md),
+            _DateField(
+              label: 'Date of birth',
+              hint: 'Select your date of birth',
+              value: _dob,
+              errorText: _dobError,
+              // A purohit conducts ceremonies in strangers' homes. Under-18s
+              // cannot be verified here, so the picker simply cannot reach
+              // those years - a validator message would be a worse way to say
+              // the same thing.
+              firstDate: DateTime(1930),
+              lastDate: _eighteenYearsAgo,
+              initialDate: _dob ?? DateTime(_eighteenYearsAgo.year - 12, 1, 1),
+              helper: _dob == null
+                  ? 'You must be at least 18 to register as a purohit.'
+                  : 'Age ${ageFrom(_dob!)}',
+              onChanged: (d) => setState(() {
+                _dob = d;
+                _dobError = null;
+              }),
             ),
             const SizedBox(height: Gap.md),
             cities.when(
@@ -613,31 +653,14 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           }),
         ),
         const SizedBox(height: Gap.md),
-        InkWell(
-          onTap: () async {
-            final now = DateTime.now();
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: _issuedOn ?? DateTime(now.year - 5),
-              firstDate: DateTime(1950),
-              lastDate: now,
-            );
-            if (picked != null) setState(() => _issuedOn = picked);
-          },
-          child: InputDecorator(
-            decoration: const InputDecoration(labelText: 'Issued on (optional)'),
-            child: Text(
-              _issuedOn == null
-                  ? 'Select a date'
-                  : '${_issuedOn!.day.toString().padLeft(2, '0')}/'
-                      '${_issuedOn!.month.toString().padLeft(2, '0')}/'
-                      '${_issuedOn!.year}',
-              style: TextStyle(
-                color:
-                    _issuedOn == null ? AppColors.inkFaint : AppColors.ink,
-              ),
-            ),
-          ),
+        _DateField(
+          label: 'Issued on (optional)',
+          hint: 'Select a date',
+          value: _issuedOn,
+          firstDate: DateTime(1950),
+          lastDate: DateTime.now(),
+          initialDate: _issuedOn ?? DateTime(DateTime.now().year - 5),
+          onChanged: (d) => setState(() => _issuedOn = d),
         ),
         const SizedBox(height: Gap.md),
         ImageUploadField(
@@ -807,6 +830,67 @@ class _RegisterPurohitPageState extends ConsumerState<RegisterPurohitPage> {
           ),
         ),
       ];
+}
+
+/// A tap-to-open date picker that looks like every other field on this form.
+///
+/// Written by hand because Flutter has no date equivalent of TextFormField and
+/// an InkWell + InputDecorator is the only way to get the label, the hairline
+/// border and the error text to match the surrounding inputs.
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.label,
+    required this.hint,
+    required this.value,
+    required this.firstDate,
+    required this.lastDate,
+    required this.initialDate,
+    required this.onChanged,
+    this.helper,
+    this.errorText,
+  });
+
+  final String label;
+  final String hint;
+  final DateTime? value;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final DateTime initialDate;
+  final String? helper;
+  final String? errorText;
+  final ValueChanged<DateTime> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.field),
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initialDate.isAfter(lastDate) ? lastDate : initialDate,
+          firstDate: firstDate,
+          lastDate: lastDate,
+          helpText: label,
+        );
+        if (picked != null) onChanged(picked);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helper,
+          helperMaxLines: 2,
+          errorText: errorText,
+          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+        ),
+        child: Text(
+          value == null ? hint : formatDate(value),
+          style: TextStyle(
+            color: value == null ? AppColors.inkFaint : AppColors.ink,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionTitle extends StatelessWidget {

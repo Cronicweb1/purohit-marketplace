@@ -82,6 +82,13 @@ class ProfilePage extends ConsumerWidget {
                     orElse: () => '…',
                   ),
             ),
+          if (pandit?.dob != null)
+            _InfoTile(
+              icon: Icons.cake_outlined,
+              label: 'Date of birth',
+              value: '${formatDate(pandit!.dob!)}  '
+                  '\u00b7  ${ageFrom(pandit.dob!)} years',
+            ),
           if (pandit?.experienceYears != null)
             _InfoTile(
               icon: Icons.workspace_premium_outlined,
