@@ -101,9 +101,10 @@ class _RoleRegisterPageState extends ConsumerState<RoleRegisterPage> {
         },
       );
 
-      // With `mailer_autoconfirm` on, Supabase does not error on a duplicate
-      // address — it returns a decoy user with an empty identity list and no
-      // session. That empty list is the only reliable tell.
+      // A duplicate address normally comes back as a 422 `user_already_exists`
+      // and is handled in the catch below. When email confirmations are on,
+      // Supabase instead hides the collision behind a decoy user with an empty
+      // identity list, so both tells are covered.
       final identities = res.user?.identities;
       if (identities != null && identities.isEmpty) {
         if (!mounted) return;
@@ -130,7 +131,11 @@ class _RoleRegisterPageState extends ConsumerState<RoleRegisterPage> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.message.toLowerCase().contains('already')
+        final msg = e.message.toLowerCase();
+        final dupe = e.code == 'user_already_exists' ||
+            msg.contains('already registered') ||
+            msg.contains('already exists');
+        _error = dupe
             ? 'This email is already registered. If you signed up as $_other, '
                 'use that login instead.'
             : e.message;
