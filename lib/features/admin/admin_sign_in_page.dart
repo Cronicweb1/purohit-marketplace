@@ -171,7 +171,19 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin sign in')),
+      appBar: AppBar(
+        title: const Text('Admin sign in'),
+        // Admins arrive here with `go`, not `push`, so there is no back stack
+        // and Flutter renders no back arrow. Without an explicit control this
+        // screen is a dead end: no swipe-back, and the only way out is the
+        // link at the very bottom of a scrolling form.
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/'),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(Gap.xl),
@@ -294,7 +306,7 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
               ),
               Center(
                 child: TextButton(
-                  onPressed: () => context.go('/sign-in'),
+                  onPressed: () => context.go('/'),
                   child: const Text('Back to normal sign in'),
                 ),
               ),

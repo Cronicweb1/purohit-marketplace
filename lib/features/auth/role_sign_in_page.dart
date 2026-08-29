@@ -221,6 +221,22 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                           _busy ? null : () => context.go('/register/$_slug'),
                       child: const Text('Create an account instead'),
                     ),
+                    // The landing funnel replaced `/sign-in`, which used to be
+                    // the only screen linking to the console. Without this the
+                    // admin route is reachable by deep link only.
+                    Center(
+                      child: TextButton(
+                        onPressed:
+                            _busy ? null : () => context.go('/admin-sign-in'),
+                        child: const Text(
+                          'Admin sign in',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
