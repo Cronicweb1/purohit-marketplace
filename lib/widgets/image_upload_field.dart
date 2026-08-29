@@ -248,3 +248,58 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
     );
   }
 }
+
+
+/// Sheet-only variant of the field above, for places that already have their own
+/// affordance (the avatar circle, the "add photo" tile in the portfolio) and so
+/// do not want the label/preview chrome.
+///
+/// Returns null when the user backs out. Throws with a human sentence when the
+/// image cannot be used, so callers can pipe it straight into a SnackBar.
+Future<PickedImage?> pickCompressedImage(BuildContext context) async {
+  final source = await showModalBottomSheet<ImageSource>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Take a photo'),
+            onTap: () => Navigator.pop(ctx, ImageSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from gallery'),
+            onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+          ),
+          const SizedBox(height: Gap.sm),
+        ],
+      ),
+    ),
+  );
+  if (source == null) return null;
+
+  final file = await ImagePicker().pickImage(
+    source: source,
+    maxWidth: _maxDimension,
+    maxHeight: _maxDimension,
+    imageQuality: _quality,
+  );
+  if (file == null) return null;
+
+  final bytes = await file.readAsBytes();
+  if (bytes.length > _maxUploadBytes) {
+    throw Exception(
+      'That image is ${(bytes.length / 1048576).toStringAsFixed(1)} MB even '
+      'after compression. Please crop it or take a plainer photo.',
+    );
+  }
+  final kind = _sniff(bytes);
+  return PickedImage(
+    bytes: bytes,
+    contentType: kind.contentType,
+    extension: kind.extension,
+  );
+}

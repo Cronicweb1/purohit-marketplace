@@ -37,6 +37,7 @@ class Application {
     this.message,
     this.quotedFee,
     this.panditName,
+    this.panditAvatarUrl,
     this.panditExperienceYears,
     this.jobTitle,
   });
@@ -49,6 +50,7 @@ class Application {
   final String? message;
   final num? quotedFee;
   final String? panditName;
+  final String? panditAvatarUrl;
   final int? panditExperienceYears;
   final String? jobTitle;
 
@@ -67,6 +69,8 @@ class Application {
       quotedFee:
           m['quoted_fee'] == null ? null : num.tryParse(m['quoted_fee'].toString()),
       panditName: profile is Map ? profile['full_name'] as String? : null,
+      panditAvatarUrl:
+          profile is Map ? profile['avatar_url'] as String? : null,
       panditExperienceYears:
           pandit is Map ? (pandit['experience_years'] as num?)?.toInt() : null,
       jobTitle: job is Map ? job['title'] as String? : null,
