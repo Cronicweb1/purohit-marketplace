@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../data/reference_repository.dart';
 import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/language_picker.dart';
 import 'profile_media.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -14,13 +16,14 @@ class ProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final session = ref.watch(sessionProvider);
     final profile = session.profile;
     final pandit = session.pandit;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(t.profile),
         automaticallyImplyLeading: false,
       ),
       body: ListView(
@@ -29,7 +32,7 @@ class ProfilePage extends ConsumerWidget {
           Row(
             children: [
               AvatarEditor(
-                name: profile?.fullName ?? 'Guest',
+                name: profile?.fullName ?? t.guest,
                 avatarUrl: profile?.avatarUrl,
               ),
               const SizedBox(width: Gap.lg),
@@ -38,13 +41,13 @@ class ProfilePage extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      profile?.fullName ?? 'Guest',
+                      profile?.fullName ?? t.guest,
                       style: const TextStyle(
                           fontSize: 19, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      session.isPurohit ? 'Purohit' : 'Family',
+                      session.isPurohit ? t.rolePurohit : t.roleUser,
                       style: const TextStyle(
                           fontSize: 13.5, color: AppColors.inkMuted),
                     ),
@@ -58,13 +61,13 @@ class ProfilePage extends ConsumerWidget {
           const SizedBox(height: Gap.lg),
           _InfoTile(
             icon: Icons.mail_outline,
-            label: 'Email',
+            label: t.labelEmail,
             value: session.email ?? '—',
           ),
           if (profile?.cityId != null)
             _InfoTile(
               icon: Icons.location_on_outlined,
-              label: 'City',
+              label: t.labelCity,
               value: ref.watch(citiesProvider).maybeWhen(
                     data: (list) {
                       for (final c in list) {
@@ -78,20 +81,21 @@ class ProfilePage extends ConsumerWidget {
           if (pandit?.dob != null)
             _InfoTile(
               icon: Icons.cake_outlined,
-              label: 'Date of birth',
+              label: t.labelDateOfBirth,
               value: '${formatDate(pandit!.dob!)}  '
-                  '\u00b7  ${ageFrom(pandit.dob!)} years',
+                  '\u00b7  ${t.yearsCount(ageFrom(pandit.dob!))}',
             ),
           if (pandit?.experienceYears != null)
             _InfoTile(
               icon: Icons.workspace_premium_outlined,
-              label: 'Experience',
-              value: '${pandit!.experienceYears} years',
+              label: t.labelExperience,
+              value: t.yearsCount(pandit!.experienceYears!),
             ),
           if ((pandit?.bio ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: Gap.lg),
-            const Text('About',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            Text(t.about,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: Gap.sm),
             Text(
               pandit!.bio!.trim(),
@@ -101,14 +105,15 @@ class ProfilePage extends ConsumerWidget {
           ],
           if (session.isPurohit && pandit != null) ...[
             const SizedBox(height: Gap.xl),
-            const Text(
-              'Work photos',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            Text(
+              t.workPhotos,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: Gap.xs),
-            const Text(
-              'Families see these on your profile when you apply.',
-              style: TextStyle(fontSize: 12.5, color: AppColors.inkMuted),
+            Text(
+              t.workPhotosHint,
+              style: const TextStyle(
+                  fontSize: 12.5, color: AppColors.inkMuted),
             ),
             const SizedBox(height: Gap.sm),
             PortfolioEditor(panditId: pandit.id),
@@ -124,9 +129,7 @@ class ProfilePage extends ConsumerWidget {
                 size: 18,
               ),
               label: Text(
-                pandit == null
-                    ? 'Register as a purohit'
-                    : 'Edit purohit details',
+                pandit == null ? t.registerAsPurohit : t.editPurohitDetails,
               ),
             ),
           if (session.isAdmin) ...[
@@ -134,20 +137,25 @@ class ProfilePage extends ConsumerWidget {
             OutlinedButton.icon(
               onPressed: () => context.push('/admin'),
               icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-              label: const Text('Verification console'),
+              label: Text(t.verificationConsole),
             ),
           ],
+          const SizedBox(height: Gap.sm),
+          // Unconditional on purpose: families, purohits and admins all need to
+          // be able to change the interface language, so this sits outside the
+          // role guards above.
+          const LanguageTile(),
           const SizedBox(height: Gap.lg),
           OutlinedButton.icon(
             onPressed: () => ref.read(sessionProvider.notifier).signOut(),
             icon: const Icon(Icons.logout, size: 18),
-            label: const Text('Sign out'),
+            label: Text(t.signOut),
           ),
           const SizedBox(height: Gap.xl),
-          const Center(
+          Center(
             child: Text(
-              'Purohit Marketplace · early build',
-              style: TextStyle(fontSize: 12, color: AppColors.inkFaint),
+              t.earlyBuild,
+              style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
             ),
           ),
           const SizedBox(height: Gap.xxl),
@@ -157,13 +165,14 @@ class ProfilePage extends ConsumerWidget {
   }
 }
 
-class _VerificationCard extends StatelessWidget {
+class _VerificationCard extends ConsumerWidget {
   const _VerificationCard({required this.pandit});
 
   final PanditProfile pandit;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final approved = pandit.status == VerificationStatus.approved;
     final rejected = pandit.status == VerificationStatus.rejected;
     final color = approved
@@ -173,12 +182,10 @@ class _VerificationCard extends StatelessWidget {
             : AppColors.warning;
 
     final message = approved
-        ? 'You are verified. Open ceremonies are visible in Find work.'
+        ? t.verificationApprovedBody
         : rejected
-            ? 'Your verification was not approved. Reply to the email we sent '
-                'to appeal.'
-            : 'Verification pending. Until an admin approves you, the job feed '
-                'stays empty — that rule lives in the database, not the app.';
+            ? t.verificationRejectedBody
+            : t.verificationPendingBody;
 
     return Container(
       padding: const EdgeInsets.all(Gap.lg),

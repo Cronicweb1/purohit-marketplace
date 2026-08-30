@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/locale_controller.dart';
 import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/language_picker.dart';
 
 /// The screen between "which side are you on" and an actual form.
 ///
@@ -10,7 +13,7 @@ import '../../theme/app_theme.dart';
 /// makes the one-email-one-role rule explainable: by the time someone types an
 /// address, the app already knows which side they claim to be on, so it can say
 /// "this email is registered as a purohit" instead of a generic failure.
-class RoleGatePage extends StatelessWidget {
+class RoleGatePage extends ConsumerWidget {
   const RoleGatePage({super.key, required this.role});
 
   final UserRole role;
@@ -18,7 +21,8 @@ class RoleGatePage extends StatelessWidget {
   bool get _isPurohit => role == UserRole.purohit;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final accent = _isPurohit ? AppColors.maroon : AppColors.saffron;
     final slug = _isPurohit ? 'purohit' : 'user';
 
@@ -27,7 +31,8 @@ class RoleGatePage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        title: Text(_isPurohit ? 'For purohits' : 'For families'),
+        title: Text(_isPurohit ? t.gateForPurohits : t.gateForFamilies),
+        actions: const [LanguageButton(), SizedBox(width: Gap.sm)],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -53,9 +58,7 @@ class RoleGatePage extends StatelessWidget {
                   ),
                   const SizedBox(height: Gap.xl),
                   Text(
-                    _isPurohit
-                        ? 'Take bookings from\nfamilies near you'
-                        : 'Book a verified purohit\nfor your ceremony',
+                    _isPurohit ? t.gatePurohitHeadline : t.gateFamilyHeadline,
                     style: const TextStyle(
                       fontSize: 26,
                       height: 1.25,
@@ -65,13 +68,7 @@ class RoleGatePage extends StatelessWidget {
                   ),
                   const SizedBox(height: Gap.md),
                   Text(
-                    _isPurohit
-                        ? 'Create a purohit account to list your services, see '
-                            'requests in your area and apply with your own '
-                            'dakshina. Verification happens after you register.'
-                        : 'Create an account to post the ritual you need, '
-                            'compare verified purohits and message them before '
-                            'you confirm anything.',
+                    _isPurohit ? t.gatePurohitBody : t.gateFamilyBody,
                     style: const TextStyle(
                       fontSize: 15,
                       height: 1.6,
@@ -82,12 +79,12 @@ class RoleGatePage extends StatelessWidget {
                   FilledButton(
                     style: FilledButton.styleFrom(backgroundColor: accent),
                     onPressed: () => context.push('/register/$slug'),
-                    child: const Text('Create an account'),
+                    child: Text(t.createAccount),
                   ),
                   const SizedBox(height: Gap.md),
                   OutlinedButton(
                     onPressed: () => context.push('/login/$slug'),
-                    child: const Text('I already have an account'),
+                    child: Text(t.alreadyHaveAccount),
                   ),
                   const SizedBox(height: Gap.xl),
                   Container(
@@ -104,11 +101,9 @@ class RoleGatePage extends StatelessWidget {
                         const SizedBox(width: Gap.md),
                         Expanded(
                           child: Text(
-                            'One email belongs to one side of the app. If this '
-                            'address is already registered as '
-                            '${_isPurohit ? 'a family' : 'a purohit'}, use that '
-                            'login instead — or register with a different '
-                            'email.',
+                            t.oneEmailNotice(
+                              _isPurohit ? t.sideFamily : t.sidePurohit,
+                            ),
                             style: const TextStyle(
                               fontSize: 13,
                               height: 1.5,
