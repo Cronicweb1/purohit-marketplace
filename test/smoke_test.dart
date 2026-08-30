@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:purohit/core/l10n/app_locale.dart';
+import 'package:purohit/core/l10n/locale_controller.dart';
 import 'package:purohit/core/format.dart';
 import 'package:purohit/main.dart';
 
@@ -8,7 +10,14 @@ void main() {
   // false, the session reports `unconfigured`, and the router parks on /setup.
   // Asserting that is the cheapest proof the whole widget tree still builds.
   testWidgets('app boots without a backend', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: PurohitApp()));
+    // `savedLocaleProvider` is normally overridden in main() from disk. A
+    // widget test never runs main(), so it must be supplied here.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [savedLocaleProvider.overrideWithValue(AppLocale.en)],
+        child: const PurohitApp(),
+      ),
+    );
     await tester.pump();
     expect(find.text('Backend not configured'), findsOneWidget);
   });

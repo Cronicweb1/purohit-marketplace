@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/l10n/app_locale.dart';
+import 'core/l10n/locale_controller.dart';
 import 'core/supabase_providers.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
@@ -36,7 +39,17 @@ Future<void> main() async {
     supabaseReady = true;
   }
 
-  runApp(const ProviderScope(child: PurohitApp()));
+  // Read the saved interface language before the first frame. Doing this in a
+  // provider instead would paint one frame in English and then snap to the
+  // saved language, which looks like a bug.
+  final savedLocale = await loadSavedLocale();
+
+  runApp(
+    ProviderScope(
+      overrides: [savedLocaleProvider.overrideWithValue(savedLocale)],
+      child: const PurohitApp(),
+    ),
+  );
 }
 
 class PurohitApp extends ConsumerWidget {
@@ -48,6 +61,16 @@ class PurohitApp extends ConsumerWidget {
       title: 'Purohit',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      // The app's own copy is switched through `stringsProvider`; these
+      // delegates are what translate the framework's own widgets (date pickers,
+      // the text-selection menu, semantics labels) to match.
+      locale: ref.watch(localeProvider).locale,
+      supportedLocales: AppLocale.values.map((l) => l.locale),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: ref.watch(routerProvider),
     );
   }

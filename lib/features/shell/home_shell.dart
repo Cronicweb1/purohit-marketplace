@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../data/messages_repository.dart';
 
@@ -25,6 +26,7 @@ class HomeShell extends ConsumerWidget {
   //   3 = /profile
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final session = ref.watch(sessionProvider);
     final isPurohit = session.isPurohit;
     // Both roles get Messages, so this is read unconditionally. Null while the
@@ -38,33 +40,33 @@ class HomeShell extends ConsumerWidget {
         branch: 0,
         icon: isPurohit ? Icons.work_outline : Icons.search,
         selectedIcon: isPurohit ? Icons.work : Icons.search,
-        label: isPurohit ? 'Find work' : 'Browse',
+        label: isPurohit ? t.navFindWork : t.navBrowse,
       ),
       _Dest(
         branch: 1,
         icon: Icons.assignment_outlined,
         selectedIcon: Icons.assignment,
-        label: isPurohit ? 'Applications' : 'My jobs',
+        label: isPurohit ? t.navApplications : t.navMyJobs,
       ),
       if (!isPurohit)
-        const _Dest(
+        _Dest(
           branch: 2,
           icon: Icons.add_circle_outline,
           selectedIcon: Icons.add_circle,
-          label: 'Post',
+          label: t.navPost,
         ),
       _Dest(
         branch: 4,
         icon: Icons.chat_bubble_outline,
         selectedIcon: Icons.chat_bubble,
-        label: 'Messages',
+        label: t.navMessages,
         badge: unread == 0 ? null : '$unread',
       ),
-      const _Dest(
+      _Dest(
         branch: 3,
         icon: Icons.person_outline,
         selectedIcon: Icons.person,
-        label: 'Profile',
+        label: t.navProfile,
       ),
     ];
 

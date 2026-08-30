@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../core/supabase_providers.dart';
 import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/language_picker.dart';
 
 /// Login for one specific side of the marketplace.
 ///
@@ -46,7 +48,7 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (!supabaseReady) {
-      setState(() => _error = 'Supabase is not configured in this build.');
+      setState(() => _error = ref.read(stringsProvider).errNotConfigured);
       return;
     }
     FocusScope.of(context).unfocus();
@@ -62,7 +64,9 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
       );
 
       final uid = res.user?.id;
-      if (uid == null) throw const AuthException('Sign in failed.');
+      if (uid == null) {
+        throw AuthException(ref.read(stringsProvider).errSignInFailed);
+      }
 
       final row = await supabase
           .from('profiles')
@@ -79,9 +83,8 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
         setState(() {
           _busy = false;
           _error = actual == UserRole.purohit
-              ? 'This email is registered as a purohit. Use the purohit login.'
-              : 'This email is registered as a family account. Use the user '
-                  'login.';
+              ? ref.read(stringsProvider).errRegisteredAsPurohit
+              : ref.read(stringsProvider).errRegisteredAsFamily;
         });
         return;
       }
@@ -96,7 +99,7 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
       setState(() {
         _busy = false;
         _error = e.message.toLowerCase().contains('invalid login')
-            ? 'Wrong email or password.'
+            ? ref.read(stringsProvider).errWrongCredentials
             : e.message;
       });
     } catch (e) {
@@ -110,6 +113,7 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
     final accent = _isPurohit ? AppColors.maroon : AppColors.saffron;
 
     return Scaffold(
@@ -117,7 +121,8 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        title: Text(_isPurohit ? 'Purohit login' : 'Login'),
+        title: Text(_isPurohit ? t.purohitLogin : t.login),
+        actions: const [LanguageButton(), SizedBox(width: Gap.sm)],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -131,7 +136,7 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      _isPurohit ? 'Welcome back, panditji' : 'Welcome back',
+                      _isPurohit ? t.welcomeBackPanditji : t.welcomeBack,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
@@ -141,8 +146,8 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                     const SizedBox(height: Gap.sm),
                     Text(
                       _isPurohit
-                          ? 'Sign in to see requests near you.'
-                          : 'Sign in to post a ritual and message purohits.',
+                          ? t.signInSubtitlePurohit
+                          : t.signInSubtitleFamily,
                       style: const TextStyle(
                         fontSize: 14,
                         height: 1.5,
@@ -155,13 +160,12 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.alternate_email),
+                      decoration: InputDecoration(
+                        labelText: t.email,
+                        prefixIcon: const Icon(Icons.alternate_email),
                       ),
-                      validator: (v) => (v ?? '').trim().isEmpty
-                          ? 'Enter your email.'
-                          : null,
+                      validator: (v) =>
+                          (v ?? '').trim().isEmpty ? t.enterYourEmail : null,
                     ),
                     const SizedBox(height: Gap.lg),
                     TextFormField(
@@ -169,7 +173,7 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                       obscureText: _obscure,
                       textInputAction: TextInputAction.done,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: t.password,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           onPressed: () => setState(() => _obscure = !_obscure),
@@ -179,7 +183,7 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                         ),
                       ),
                       validator: (v) =>
-                          (v ?? '').isEmpty ? 'Enter your password.' : null,
+                          (v ?? '').isEmpty ? t.enterYourPassword : null,
                       onFieldSubmitted: (_) => _busy ? null : _submit(),
                     ),
                     if (_error != null) ...[
@@ -213,13 +217,13 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Sign in'),
+                          : Text(t.signIn),
                     ),
                     const SizedBox(height: Gap.md),
                     TextButton(
                       onPressed:
                           _busy ? null : () => context.go('/register/$_slug'),
-                      child: const Text('Create an account instead'),
+                      child: Text(t.createAccountInstead),
                     ),
                     // The landing funnel replaced `/sign-in`, which used to be
                     // the only screen linking to the console. Without this the
@@ -228,9 +232,9 @@ class _RoleSignInPageState extends ConsumerState<RoleSignInPage> {
                       child: TextButton(
                         onPressed:
                             _busy ? null : () => context.go('/admin-sign-in'),
-                        child: const Text(
-                          'Admin sign in',
-                          style: TextStyle(
+                        child: Text(
+                          t.adminSignIn,
+                          style: const TextStyle(
                             fontSize: 12.5,
                             color: AppColors.inkMuted,
                           ),
