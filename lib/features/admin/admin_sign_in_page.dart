@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/l10n/app_strings.dart';
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../core/supabase_providers.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/language_picker.dart';
 
 /// Admin login.
 ///
@@ -58,9 +61,7 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
       // leaving them logged in on a screen that promised an admin console.
       await ref.read(sessionProvider.notifier).signOut();
       if (!mounted) return;
-      setState(() => _error =
-          'That account is not an administrator. Ask the project owner to '
-          'set app_metadata.role = "admin" in Supabase.');
+      setState(() => _error = ref.read(stringsProvider).errNotAdmin);
       return;
     }
     if (!mounted) return;
@@ -69,15 +70,15 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
 
   Future<void> _signInWithPassword() async {
     if (!_emailLooksValid()) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = ref.read(stringsProvider).errInvalidEmail);
       return;
     }
     if (_password.text.isEmpty) {
-      setState(() => _error = 'Enter your password.');
+      setState(() => _error = ref.read(stringsProvider).errEnterPassword);
       return;
     }
     if (!supabaseReady) {
-      setState(() => _error = 'Backend not configured.');
+      setState(() => _error = ref.read(stringsProvider).errNotConfigured);
       return;
     }
 
@@ -104,11 +105,11 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
 
   Future<void> _send() async {
     if (!_emailLooksValid()) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = ref.read(stringsProvider).errInvalidEmail);
       return;
     }
     if (!supabaseReady) {
-      setState(() => _error = 'Backend not configured.');
+      setState(() => _error = ref.read(stringsProvider).errNotConfigured);
       return;
     }
 
@@ -134,7 +135,7 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
   Future<void> _verify() async {
     final token = _code.text.trim();
     if (token.length < 6) {
-      setState(() => _error = 'Enter the 6-digit code.');
+      setState(() => _error = ref.read(stringsProvider).errEnterCode);
       return;
     }
 
@@ -151,7 +152,7 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
       await _finish();
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'That code did not work. $e');
+      setState(() => _error = ref.read(stringsProvider).errCodeFailed('$e'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -163,22 +164,24 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
     return _codeSent ? _verify : _send;
   }
 
-  String get _primaryLabel {
-    if (!_useCode) return 'Sign in to console';
-    return _codeSent ? 'Verify and open console' : 'Send code';
+  String _primaryLabel(AppStrings t) {
+    if (!_useCode) return t.adminSignInCta;
+    return _codeSent ? t.adminVerifyCta : t.adminSendCode;
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin sign in'),
+        title: Text(t.adminSignIn),
+        actions: const [LanguageButton(), SizedBox(width: Gap.sm)],
         // Admins arrive here with `go`, not `push`, so there is no back stack
         // and Flutter renders no back arrow. Without an explicit control this
         // screen is a dead end: no swipe-back, and the only way out is the
         // link at the very bottom of a scrolling form.
         leading: IconButton(
-          tooltip: 'Back',
+          tooltip: t.back,
           icon: const Icon(Icons.arrow_back),
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/'),
@@ -193,15 +196,15 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
               const Icon(Icons.admin_panel_settings_outlined,
                   size: 36, color: AppColors.saffronDark),
               const SizedBox(height: Gap.lg),
-              const Text(
-                'Verification console',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              Text(
+                t.verificationConsole,
+                style: const TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: Gap.sm),
-              const Text(
-                'For the team that reviews purohit applications. The admin role '
-                'is granted in Supabase and cannot be requested from the app.',
-                style: TextStyle(
+              Text(
+                t.adminConsoleBlurb,
+                style: const TextStyle(
                     fontSize: 13.5, height: 1.5, color: AppColors.inkMuted),
               ),
               const SizedBox(height: Gap.xxl),
@@ -211,9 +214,9 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
                 autofillHints: const [AutofillHints.username],
-                decoration: const InputDecoration(
-                  labelText: 'Admin email',
-                  hintText: 'you@example.com',
+                decoration: InputDecoration(
+                  labelText: t.adminEmailLabel,
+                  hintText: t.emailHintExample,
                 ),
                 onSubmitted: (_) => _primaryAction?.call(),
               ),
@@ -226,13 +229,13 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
                   enableSuggestions: false,
                   autofillHints: const [AutofillHints.password],
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: t.password,
                     suffixIcon: IconButton(
                       icon: Icon(_obscure
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined),
                       onPressed: () => setState(() => _obscure = !_obscure),
-                      tooltip: _obscure ? 'Show password' : 'Hide password',
+                      tooltip: _obscure ? t.showPassword : t.hidePassword,
                     ),
                   ),
                   onSubmitted: (_) => _signInWithPassword(),
@@ -274,7 +277,7 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : Text(_primaryLabel),
+                    : Text(_primaryLabel(t)),
               ),
               if (_useCode && _codeSent)
                 TextButton(
@@ -285,7 +288,7 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
                             _code.clear();
                             _error = null;
                           }),
-                  child: const Text('Use a different email'),
+                  child: Text(t.adminUseDifferentEmail),
                 ),
               const SizedBox(height: Gap.sm),
               Center(
@@ -300,14 +303,14 @@ class _AdminSignInPageState extends ConsumerState<AdminSignInPage> {
                             _error = null;
                           }),
                   child: Text(_useCode
-                      ? 'Use a password instead'
-                      : 'Email me a code instead'),
+                      ? t.adminUsePasswordInstead
+                      : t.adminUseCodeInstead),
                 ),
               ),
               Center(
                 child: TextButton(
                   onPressed: () => context.go('/'),
-                  child: const Text('Back to normal sign in'),
+                  child: Text(t.adminBackToNormalSignIn),
                 ),
               ),
             ],

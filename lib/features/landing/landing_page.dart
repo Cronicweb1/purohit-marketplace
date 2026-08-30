@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/locale_controller.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/language_picker.dart';
 
 /// The public front door. Everything above the first tap has to explain the
 /// marketplace to two very different audiences — a family that has never
@@ -15,14 +18,14 @@ import '../../theme/app_theme.dart';
 /// deliberately ships no animation package, and a reveal-on-scroll effect is
 /// only a position check plus an [AnimationController], so pulling in a
 /// dependency for it would cost more than it saves.
-class LandingPage extends StatefulWidget {
+class LandingPage extends ConsumerStatefulWidget {
   const LandingPage({super.key});
 
   @override
-  State<LandingPage> createState() => _LandingPageState();
+  ConsumerState<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage>
+class _LandingPageState extends ConsumerState<LandingPage>
     with TickerProviderStateMixin {
   final _scroll = ScrollController();
 
@@ -36,12 +39,6 @@ class _LandingPageState extends State<LandingPage>
   /// The top bar only earns its space once the hero has scrolled away.
   bool _barVisible = false;
 
-  static const _lines = [
-    'Book a pandit the way you book anything else worth doing well.',
-    'Every ritual deserves someone who knows why it is done.',
-    'Muhurat, mantra, samagri — sorted before the guests arrive.',
-    'Your family traditions, in hands that have held them before.',
-  ];
   int _line = 0;
   Timer? _lineTimer;
 
@@ -50,7 +47,12 @@ class _LandingPageState extends State<LandingPage>
     super.initState();
     _scroll.addListener(_onScroll);
     _lineTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) setState(() => _line = (_line + 1) % _lines.length);
+      if (!mounted) return;
+      // Read rather than watch: the timer only needs the count. The list
+      // itself is re-read on every build, so switching language mid-rotation
+      // picks up the new copy on the next tick.
+      final count = ref.read(stringsProvider).heroLines.length;
+      setState(() => _line = (_line + 1) % count);
     });
   }
 
@@ -70,8 +72,10 @@ class _LandingPageState extends State<LandingPage>
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
     final width = MediaQuery.sizeOf(context).width;
     final wide = width > 720;
+    final heroLines = t.heroLines;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -81,7 +85,11 @@ class _LandingPageState extends State<LandingPage>
             controller: _scroll,
             child: Column(
               children: [
-                _Hero(scroll: _scroll, halo: _halo, line: _lines[_line]),
+                _Hero(
+                  scroll: _scroll,
+                  halo: _halo,
+                  line: heroLines[_line % heroLines.length],
+                ),
                 _Reveal(
                   scroll: _scroll,
                   child: _WhatWeDo(wide: wide),
@@ -89,30 +97,25 @@ class _LandingPageState extends State<LandingPage>
                 _Reveal(
                   scroll: _scroll,
                   child: _HowItWorks(
-                    eyebrow: 'For families',
-                    title: 'Find the right purohit,\nnot just any purohit',
+                    eyebrow: t.landingForFamilies,
+                    title: t.landingFamilyHeadline,
                     accent: AppColors.saffron,
                     tint: AppColors.saffronTint,
-                    steps: const [
+                    steps: [
                       _Step(
                         icon: Icons.auto_stories_outlined,
-                        title: 'Tell us the ritual',
-                        body: 'Griha pravesh, satyanarayan katha, naamkaran, '
-                            'shraddh — pick the ceremony and the date you have '
-                            'in mind, along with your city.',
+                        title: t.stepTellRitualTitle,
+                        body: t.stepTellRitualBody,
                       ),
                       _Step(
                         icon: Icons.group_outlined,
-                        title: 'Compare verified purohits',
-                        body: 'See experience, languages spoken, the traditions '
-                            'they follow and what they charge. Every listed '
-                            'purohit has cleared our verification.',
+                        title: t.stepCompareTitle,
+                        body: t.stepCompareBody,
                       ),
                       _Step(
                         icon: Icons.chat_bubble_outline,
-                        title: 'Talk, then confirm',
-                        body: 'Message them about samagri, muhurat and how long '
-                            'the puja runs. Confirm only once it feels right.',
+                        title: t.stepTalkTitle,
+                        body: t.stepTalkBody,
                       ),
                     ],
                   ),
@@ -120,30 +123,25 @@ class _LandingPageState extends State<LandingPage>
                 _Reveal(
                   scroll: _scroll,
                   child: _HowItWorks(
-                    eyebrow: 'For purohits',
-                    title: 'Your knowledge,\nfinally easy to find',
+                    eyebrow: t.landingForPurohits,
+                    title: t.landingPurohitHeadline,
                     accent: AppColors.maroon,
                     tint: const Color(0xFFF7ECEA),
-                    steps: const [
+                    steps: [
                       _Step(
                         icon: Icons.badge_outlined,
-                        title: 'Register and get verified',
-                        body: 'Share your experience, your guru parampara and '
-                            'your documents once. Verification is what earns a '
-                            'family trust before you ever meet them.',
+                        title: t.stepRegisterTitle,
+                        body: t.stepRegisterBody,
                       ),
                       _Step(
                         icon: Icons.work_outline,
-                        title: 'See real requests near you',
-                        body: 'Families post the ritual, the date and the place. '
-                            'Set your travel radius and only see what you can '
-                            'actually reach.',
+                        title: t.stepRequestsTitle,
+                        body: t.stepRequestsBody,
                       ),
                       _Step(
                         icon: Icons.handshake_outlined,
-                        title: 'Apply on your terms',
-                        body: 'Quote your dakshina, answer questions in chat and '
-                            'take only the work that suits your calendar.',
+                        title: t.stepApplyTitle,
+                        body: t.stepApplyBody,
                       ),
                     ],
                   ),
@@ -154,6 +152,21 @@ class _LandingPageState extends State<LandingPage>
             ),
           ),
           _TopBar(visible: _barVisible),
+          // Until the top bar earns its place the page has no chrome at all,
+          // so the switcher floats over the hero and hands off to the bar's
+          // own copy once that appears. Two widgets, never both visible.
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + Gap.sm,
+            right: Gap.lg,
+            child: IgnorePointer(
+              ignoring: _barVisible,
+              child: AnimatedOpacity(
+                opacity: _barVisible ? 0 : 1,
+                duration: AppDuration.normal,
+                child: const LanguageButton(),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -164,7 +177,7 @@ class _LandingPageState extends State<LandingPage>
 // Hero
 // ---------------------------------------------------------------------------
 
-class _Hero extends StatelessWidget {
+class _Hero extends ConsumerWidget {
   const _Hero({required this.scroll, required this.halo, required this.line});
 
   final ScrollController scroll;
@@ -172,7 +185,8 @@ class _Hero extends StatelessWidget {
   final String line;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     final height = math.max(560.0, MediaQuery.sizeOf(context).height * 0.86);
 
     return SizedBox(
@@ -224,10 +238,10 @@ class _Hero extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Purohit',
+                    Text(
+                      s.brand,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 46,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -1,
@@ -333,13 +347,14 @@ class _HaloMark extends StatelessWidget {
       );
 }
 
-class _ScrollHint extends StatelessWidget {
+class _ScrollHint extends ConsumerWidget {
   const _ScrollHint({required this.halo});
 
   final AnimationController halo;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     return AnimatedBuilder(
       animation: halo,
       builder: (context, child) {
@@ -349,15 +364,15 @@ class _ScrollHint extends StatelessWidget {
           child: Opacity(opacity: 0.45 + 0.35 * t, child: child),
         );
       },
-      child: const Column(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Scroll to see how it works',
-            style: TextStyle(fontSize: 12, color: AppColors.inkFaint),
+            s.scrollHint,
+            style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
           ),
-          SizedBox(height: Gap.xs),
-          Icon(Icons.keyboard_arrow_down, color: AppColors.inkFaint),
+          const SizedBox(height: Gap.xs),
+          const Icon(Icons.keyboard_arrow_down, color: AppColors.inkFaint),
         ],
       ),
     );
@@ -368,37 +383,34 @@ class _ScrollHint extends StatelessWidget {
 // Sections
 // ---------------------------------------------------------------------------
 
-class _WhatWeDo extends StatelessWidget {
+class _WhatWeDo extends ConsumerWidget {
   const _WhatWeDo({required this.wide});
 
   final bool wide;
 
   @override
-  Widget build(BuildContext context) {
-    const cards = [
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
+    final cards = [
       _FeatureCard(
         icon: Icons.verified_outlined,
-        title: 'Verified, not just listed',
-        body: 'Every purohit submits documents and guru references before a '
-            'single family can see them. Nobody appears on the app unreviewed.',
+        title: s.trustVerifiedTitle,
+        body: s.trustVerifiedBody,
       ),
       _FeatureCard(
         icon: Icons.translate_outlined,
-        title: 'Your language, your parampara',
-        body: 'Filter by the languages a purohit speaks and the traditions they '
-            'perform, so the ceremony sounds the way it does at home.',
+        title: s.trustLanguageTitle,
+        body: s.trustLanguageBody,
       ),
       _FeatureCard(
         icon: Icons.price_change_outlined,
-        title: 'Dakshina agreed upfront',
-        body: 'Fees are stated before you book and discussed in chat. No '
-            'awkward conversation on the morning of the puja.',
+        title: s.trustDakshinaTitle,
+        body: s.trustDakshinaBody,
       ),
       _FeatureCard(
         icon: Icons.near_me_outlined,
-        title: 'Purohits who can actually reach you',
-        body: 'Each purohit sets a travel radius, so the people you see are the '
-            'people who can be at your door on the day.',
+        title: s.trustReachTitle,
+        body: s.trustReachBody,
       ),
     ];
 
@@ -406,11 +418,11 @@ class _WhatWeDo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Eyebrow(label: 'What Purohit does', color: AppColors.saffron),
+          _Eyebrow(label: s.aboutEyebrow, color: AppColors.saffron),
           const SizedBox(height: Gap.md),
-          const Text(
-            'A marketplace for the moments\nthat matter most',
-            style: TextStyle(
+          Text(
+            s.aboutHeadline,
+            style: const TextStyle(
               fontSize: 28,
               height: 1.25,
               fontWeight: FontWeight.w800,
@@ -418,13 +430,9 @@ class _WhatWeDo extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Gap.md),
-          const Text(
-            'Finding a pandit still runs on phone numbers passed around the '
-            'family. That works until you move cities, until the date is close, '
-            'or until nobody is sure who actually knows the vidhi. Purohit puts '
-            'that search in one place — and gives purohits a way to be found by '
-            'the families who need them.',
-            style: TextStyle(
+          Text(
+            s.aboutBody,
+            style: const TextStyle(
               fontSize: 15,
               height: 1.6,
               color: AppColors.inkMuted,
@@ -612,11 +620,12 @@ class _FeatureCard extends StatelessWidget {
   }
 }
 
-class _TrustStrip extends StatelessWidget {
+class _TrustStrip extends ConsumerWidget {
   const _TrustStrip();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     return _Section(
       child: Container(
         padding: const EdgeInsets.all(Gap.xl),
@@ -624,35 +633,32 @@ class _TrustStrip extends StatelessWidget {
           color: AppColors.ink,
           borderRadius: BorderRadius.circular(AppRadius.card),
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Nothing about a puja should be a gamble',
-              style: TextStyle(
+              s.assuranceHeadline,
+              style: const TextStyle(
                 fontSize: 22,
                 height: 1.3,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: Gap.lg),
+            const SizedBox(height: Gap.lg),
             _TrustLine(
               icon: Icons.shield_outlined,
-              text: 'Documents and guru references checked by our team before '
-                  'a purohit is listed.',
+              text: s.assuranceDocuments,
             ),
-            SizedBox(height: Gap.md),
+            const SizedBox(height: Gap.md),
             _TrustLine(
               icon: Icons.reviews_outlined,
-              text: 'Reviews written only by families who actually completed a '
-                  'booking.',
+              text: s.assuranceReviews,
             ),
-            SizedBox(height: Gap.md),
+            const SizedBox(height: Gap.md),
             _TrustLine(
               icon: Icons.lock_outline,
-              text: 'One email, one account. A login is either a family or a '
-                  'purohit — never quietly both.',
+              text: s.assuranceOneEmail,
             ),
           ],
         ),
@@ -689,28 +695,29 @@ class _TrustLine extends StatelessWidget {
   }
 }
 
-class _ClosingCta extends StatelessWidget {
+class _ClosingCta extends ConsumerWidget {
   const _ClosingCta();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     return _Section(
       child: Column(
         children: [
-          const Text(
-            'Which side are you on?',
+          Text(
+            s.whichSideTitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
             ),
           ),
           const SizedBox(height: Gap.sm),
-          const Text(
-            'Pick a door. You can always browse the ceremonies first.',
+          Text(
+            s.whichSideBody,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               height: 1.55,
               color: AppColors.inkMuted,
@@ -721,7 +728,7 @@ class _ClosingCta extends StatelessWidget {
           const SizedBox(height: Gap.md),
           TextButton(
             onPressed: () => context.push('/browse'),
-            child: const Text('Just browsing? See the ceremonies'),
+            child: Text(s.justBrowsing),
           ),
           const SizedBox(height: Gap.xxl),
         ],
@@ -736,11 +743,12 @@ class _ClosingCta extends StatelessWidget {
 
 /// The two doors. Repeated at the top and the bottom because a visitor who
 /// reads the whole page should not have to scroll back up to act on it.
-class _CtaPair extends StatelessWidget {
+class _CtaPair extends ConsumerWidget {
   const _CtaPair();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     return Column(
       children: [
         SizedBox(
@@ -748,7 +756,7 @@ class _CtaPair extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: () => context.push('/start/user'),
             icon: const Icon(Icons.family_restroom, size: 20),
-            label: const Text('Start as a user'),
+            label: Text(s.startAsUser),
           ),
         ),
         const SizedBox(height: Gap.md),
@@ -757,7 +765,7 @@ class _CtaPair extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () => context.push('/start/purohit'),
             icon: const Icon(Icons.self_improvement, size: 20),
-            label: const Text('Start as a purohit'),
+            label: Text(s.startAsPurohit),
           ),
         ),
       ],
@@ -884,13 +892,14 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
 
 /// Appears once the hero is gone so the two doors are never more than a tap
 /// away, however far down the page someone has read.
-class _TopBar extends StatelessWidget {
+class _TopBar extends ConsumerWidget {
   const _TopBar({required this.visible});
 
   final bool visible;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     return IgnorePointer(
       ignoring: !visible,
       child: AnimatedOpacity(
@@ -914,18 +923,20 @@ class _TopBar extends StatelessWidget {
               const Icon(Icons.temple_hindu,
                   size: 20, color: AppColors.saffronDark),
               const SizedBox(width: Gap.sm),
-              const Text(
-                'Purohit',
-                style: TextStyle(
+              Text(
+                s.brand,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: AppColors.ink,
                 ),
               ),
               const Spacer(),
+              const LanguageButton(),
+              const SizedBox(width: Gap.xs),
               TextButton(
                 onPressed: () => context.push('/start/purohit'),
-                child: const Text('Purohit'),
+                child: Text(s.rolePurohit),
               ),
               const SizedBox(width: Gap.xs),
               FilledButton(
@@ -934,7 +945,7 @@ class _TopBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
                 ),
                 onPressed: () => context.push('/start/user'),
-                child: const Text('User'),
+                child: Text(s.roleUser),
               ),
             ],
           ),

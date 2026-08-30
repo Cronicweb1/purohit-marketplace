@@ -143,4 +143,25 @@ abstract class AppStrings {
   String get verificationPendingBody;
   String get verificationApprovedBody;
   String get verificationRejectedBody;
+
+  // ---- Admin console sign-in -------------------------------------------
+  // The admin surface is small but it is the one screen a reviewer sees
+  // before anything else, so it gets the same treatment as the public pages.
+  String get adminConsoleBlurb;
+  String get adminEmailLabel;
+  String get emailHintExample;
+  String get showPassword;
+  String get hidePassword;
+  String get adminSignInCta;
+  String get adminVerifyCta;
+  String get adminSendCode;
+  String get adminUseDifferentEmail;
+  String get adminUsePasswordInstead;
+  String get adminUseCodeInstead;
+  String get adminBackToNormalSignIn;
+  String get errNotAdmin;
+  String get errInvalidEmail;
+  String get errEnterPassword;
+  String get errEnterCode;
+  String errCodeFailed(String detail);
 }

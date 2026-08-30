@@ -275,4 +275,43 @@ class AppStringsHi extends AppStrings {
   String get verificationPendingBody =>
       'सत्यापन लंबित है। जब तक कोई एडमिन आपको स्वीकृत नहीं करता, काम की सूची '
       'खाली रहेगी — यह नियम ऐप में नहीं, डेटाबेस में है।';
+
+  @override
+  String get adminConsoleBlurb =>
+      'पुरोहित आवेदनों की समीक्षा करने वाली टीम के लिए। एडमिन भूमिका Supabase में दी '
+      'जाती है और ऐप से नहीं मांगी जा सकती।';
+  @override
+  String get adminEmailLabel => 'एडमिन ईमेल';
+  @override
+  String get emailHintExample => 'you@example.com';
+  @override
+  String get showPassword => 'पासवर्ड दिखाएँ';
+  @override
+  String get hidePassword => 'पासवर्ड छिपाएँ';
+  @override
+  String get adminSignInCta => 'कंसोल में साइन इन करें';
+  @override
+  String get adminVerifyCta => 'सत्यापित करके कंसोल खोलें';
+  @override
+  String get adminSendCode => 'कोड भेजें';
+  @override
+  String get adminUseDifferentEmail => 'दूसरा ईमेल उपयोग करें';
+  @override
+  String get adminUsePasswordInstead => 'इसके बजाय पासवर्ड उपयोग करें';
+  @override
+  String get adminUseCodeInstead => 'इसके बजाय मुझे कोड ईमेल करें';
+  @override
+  String get adminBackToNormalSignIn => 'सामान्य साइन इन पर लौटें';
+  @override
+  String get errNotAdmin =>
+      'यह खाता एडमिन नहीं है। प्रोजेक्ट ओनर से Supabase में app_metadata.role = "admin" '
+      'सेट करने को कहें।';
+  @override
+  String get errInvalidEmail => 'मान्य ईमेल पता दर्ज करें।';
+  @override
+  String get errEnterPassword => 'अपना पासवर्ड दर्ज करें।';
+  @override
+  String get errEnterCode => '6 अंकों का कोड दर्ज करें।';
+  @override
+  String errCodeFailed(String detail) => 'यह कोड काम नहीं कर सका। $detail';
 }

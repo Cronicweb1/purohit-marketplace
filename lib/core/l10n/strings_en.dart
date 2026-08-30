@@ -273,4 +273,43 @@ class AppStringsEn extends AppStrings {
   String get verificationPendingBody =>
       'Verification pending. Until an admin approves you, the job feed stays '
       'empty — that rule lives in the database, not the app.';
+
+  @override
+  String get adminConsoleBlurb =>
+      'For the team that reviews purohit applications. The admin role is '
+      'granted in Supabase and cannot be requested from the app.';
+  @override
+  String get adminEmailLabel => 'Admin email';
+  @override
+  String get emailHintExample => 'you@example.com';
+  @override
+  String get showPassword => 'Show password';
+  @override
+  String get hidePassword => 'Hide password';
+  @override
+  String get adminSignInCta => 'Sign in to console';
+  @override
+  String get adminVerifyCta => 'Verify and open console';
+  @override
+  String get adminSendCode => 'Send code';
+  @override
+  String get adminUseDifferentEmail => 'Use a different email';
+  @override
+  String get adminUsePasswordInstead => 'Use a password instead';
+  @override
+  String get adminUseCodeInstead => 'Email me a code instead';
+  @override
+  String get adminBackToNormalSignIn => 'Back to normal sign in';
+  @override
+  String get errNotAdmin =>
+      'That account is not an administrator. Ask the project owner to set '
+      'app_metadata.role = "admin" in Supabase.';
+  @override
+  String get errInvalidEmail => 'Enter a valid email address.';
+  @override
+  String get errEnterPassword => 'Enter your password.';
+  @override
+  String get errEnterCode => 'Enter the 6-digit code.';
+  @override
+  String errCodeFailed(String detail) => 'That code did not work. $detail';
 }
