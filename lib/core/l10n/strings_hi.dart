@@ -314,4 +314,198 @@ class AppStringsHi extends AppStrings {
   String get errEnterCode => '6 अंकों का कोड दर्ज करें।';
   @override
   String errCodeFailed(String detail) => 'यह कोड काम नहीं कर सका। $detail';
+
+  // ---- Jobs ---------------------------------------------------------------
+  @override
+  String get findWork => 'काम खोजें';
+  @override
+  String get searchCeremoniesHint => 'संस्कार खोजें, जैसे गृह प्रवेश';
+  @override
+  String get clearSearch => 'खोज हटाएँ';
+  @override
+  String get clearFilters => 'फ़िल्टर हटाएँ';
+  @override
+  String get clearAction => 'हटाएँ';
+  @override
+  String openJobsCount(int count) =>
+      count == 1 ? '1 खुला काम' : '$count खुले काम';
+  @override
+  String get feedAwaitingVerificationBody =>
+      'आपकी पुरोहित लिस्टिंग सत्यापन की प्रतीक्षा में है। जब तक कोई एडमिन '
+      'आपको स्वीकृत नहीं करता, काम की पोस्ट छिपी रहती हैं — यह डेटाबेस स्तर '
+      'पर लागू है, इसलिए तब तक नीचे की सूची खाली रहेगी।';
+  @override
+  String get noOpenJobsMatch => 'कोई खुला काम मेल नहीं खाता';
+  @override
+  String get nothingToShowYet => 'अभी दिखाने को कुछ नहीं';
+  @override
+  String get noOpenJobsMatchBody => 'फ़िल्टर हटाकर देखें, या कल फिर देखें।';
+  @override
+  String get feedLockedBody =>
+      'आपकी लिस्टिंग सत्यापित होते ही, परिवारों द्वारा पोस्ट किए गए संस्कार '
+      'यहाँ दिखेंगे।';
+
+  @override
+  String get urgent => 'तत्काल';
+  @override
+  String postedAgo(String ago) => '$ago पोस्ट किया गया';
+
+  @override
+  String get ceremony => 'संस्कार';
+  @override
+  String get notVisibleToYou => 'आपको दिखाई नहीं देता';
+  @override
+  String get notVisibleToYouBody =>
+      'यह संस्कार या तो अब मौजूद नहीं है, या row-level security आपको इस तक '
+      'पहुँच नहीं देती।';
+  @override
+  String get budget => 'बजट';
+  @override
+  String get dateLabel => 'तिथि';
+  @override
+  String get locationLabel => 'स्थान';
+  @override
+  String get urgencyLabel => 'तात्कालिकता';
+  @override
+  String get detailsLabel => 'विवरण';
+  @override
+  String get applicationsLabel => 'आवेदन';
+  @override
+  String get noApplicantsYet =>
+      'अभी तक किसी पुरोहित ने आवेदन नहीं किया। सत्यापित पुरोहितों को आपकी '
+      'पोस्ट उनकी फ़ीड में दिखती है।';
+  @override
+  String couldNotOpenChat(String detail) => 'चैट नहीं खुल सकी: $detail';
+  @override
+  String get thisPurohit => 'इस पुरोहित';
+  @override
+  String get confirmPurohitTitle => 'पुरोहित की पुष्टि करें';
+  @override
+  String confirmPurohitBody(String name) =>
+      'इस संस्कार के लिए $name को चुनें?\n\n'
+      'बाकी सभी आवेदकों को "नहीं चुना गया" कर दिया जाएगा, संस्कार '
+      '"पुरोहित चयनित" स्थिति में चला जाएगा, और संपर्क विवरण साझा हो जाएँगे। '
+      'इसे ऐप से पूर्ववत नहीं किया जा सकता।';
+  @override
+  String get cancelAction => 'रद्द करें';
+  @override
+  String get confirmAction => 'पुष्टि करें';
+  @override
+  String purohitConfirmed(String name) =>
+      'इस संस्कार के लिए $name की पुष्टि हो गई।';
+  @override
+  String couldNotConfirm(String detail) => 'पुष्टि नहीं हो सकी: $detail';
+  @override
+  String get purohitFallbackName => 'पुरोहित';
+  @override
+  String yearsShort(int years) => '$years वर्ष';
+  @override
+  String get noAmountQuoted => 'कोई राशि नहीं बताई';
+  @override
+  String quotedAmount(String amount) => '$amount बताया';
+  @override
+  String get messageAction => 'संदेश';
+  @override
+  String get selectAction => 'चुनें';
+  @override
+  String get applicationSent => 'आवेदन भेज दिया गया।';
+  @override
+  String get ctaVerificationPending => 'सत्यापन लंबित';
+  @override
+  String get ctaClosed => 'बंद';
+  @override
+  String get ctaApplied => 'आवेदन किया';
+  @override
+  String get ctaApply => 'आवेदन करें';
+  @override
+  String get sendYourQuote => 'अपना प्रस्ताव भेजें';
+  @override
+  String get yourFeeLabel => 'आपकी दक्षिणा (₹)';
+  @override
+  String get feeHintExample => 'जैसे 5100';
+  @override
+  String get messageToFamily => 'परिवार को संदेश';
+  @override
+  String get messageToFamilyHint =>
+      'आप किस सम्प्रदाय का पालन करते हैं, इसमें क्या शामिल है…';
+  @override
+  String get sendApplication => 'आवेदन भेजें';
+
+  @override
+  String get myApplications => 'मेरे आवेदन';
+  @override
+  String get myCeremonies => 'मेरे संस्कार';
+  @override
+  String get nothingPostedYet => 'अभी कुछ पोस्ट नहीं किया';
+  @override
+  String get nothingPostedYetBody =>
+      'पोस्ट टैब से संस्कार पोस्ट करें। आपके शहर के सत्यापित पुरोहित इसे '
+      'देखेंगे और आपको अपने प्रस्ताव भेजेंगे।';
+  @override
+  String get noApplicationsYet => 'अभी कोई आवेदन नहीं';
+  @override
+  String get noApplicationsYetBody =>
+      '"काम खोजें" खोलें, ऐसा संस्कार चुनें जो आप करा सकते हैं, और परिवार को '
+      'अपना प्रस्ताव भेजें।';
+  @override
+  String ceremonyNumber(int id) => 'संस्कार #$id';
+  @override
+  String youQuoted(String amount) => 'आपने $amount बताया';
+  @override
+  String sentAgo(String ago) => '$ago भेजा';
+  @override
+  String get selectedContactUnlocked =>
+      'चयनित — परिवार के संपर्क विवरण अनलॉक हो गए हैं।';
+
+  // ---- Enum labels --------------------------------------------------------
+  @override
+  String get urgencyFlexible => 'लचीली तिथि';
+  @override
+  String get urgencyScheduled => 'निर्धारित';
+  @override
+  String get urgencyImmediate => 'तत्काल';
+  @override
+  String get jobStatusOpen => 'खुला';
+  @override
+  String get jobStatusAssigned => 'पुरोहित चयनित';
+  @override
+  String get jobStatusCompleted => 'पूर्ण';
+  @override
+  String get jobStatusCancelled => 'रद्द';
+  @override
+  String get appStatusApplied => 'आवेदन किया';
+  @override
+  String get appStatusShortlisted => 'शॉर्टलिस्ट';
+  @override
+  String get appStatusSelected => 'चयनित';
+  @override
+  String get appStatusRejected => 'नहीं चुना गया';
+  @override
+  String get appStatusWithdrawn => 'वापस लिया';
+
+  // ---- Money, dates, relative time ---------------------------------------
+  @override
+  String get notSpecified => 'निर्दिष्ट नहीं';
+  @override
+  String get openToQuotes => 'प्रस्ताव आमंत्रित';
+  @override
+  String get justNow => 'अभी अभी';
+  @override
+  String minutesAgo(int n) => '$n मिनट पहले';
+  @override
+  String hoursAgo(int n) => '$n घंटे पहले';
+  @override
+  String daysAgo(int n) => '$n दिन पहले';
+  @override
+  String monthsAgo(int n) => '$n महीने पहले';
+  @override
+  String yearsAgo(int n) => '$n वर्ष पहले';
+  @override
+  String get datePassed => 'तिथि बीत चुकी';
+  @override
+  String get todayLabel => 'आज';
+  @override
+  String get tomorrowLabel => 'कल';
+  @override
+  String inDaysLabel(int days) => '$days दिन में';
 }

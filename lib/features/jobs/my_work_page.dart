@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
+import '../../core/l10n/enum_labels.dart';
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../data/applications_repository.dart';
 import '../../data/jobs_repository.dart';
@@ -19,12 +21,13 @@ class MyWorkPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final session = ref.watch(sessionProvider);
     final isPurohit = session.isPurohit;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isPurohit ? 'My applications' : 'My ceremonies'),
+        title: Text(isPurohit ? t.myApplications : t.myCeremonies),
         automaticallyImplyLeading: false,
       ),
       body: isPurohit ? const _MyApplications() : const _MyJobs(),
@@ -37,6 +40,7 @@ class _MyJobs extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final jobs = ref.watch(myJobsProvider);
 
     return RefreshIndicator(
@@ -49,14 +53,12 @@ class _MyJobs extends ConsumerWidget {
         data: (list) {
           if (list.isEmpty) {
             return ListView(
-              children: const [
-                SizedBox(height: 80),
+              children: [
+                const SizedBox(height: 80),
                 EmptyState(
                   icon: Icons.temple_hindu_outlined,
-                  title: 'Nothing posted yet',
-                  message:
-                      'Post a ceremony from the Post tab. Verified purohits in '
-                      'your city will see it and send you their quotes.',
+                  title: t.nothingPostedYet,
+                  message: t.nothingPostedYetBody,
                 ),
               ],
             );
@@ -87,6 +89,7 @@ class _MyApplications extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final apps = ref.watch(myApplicationsProvider);
 
     return RefreshIndicator(
@@ -101,14 +104,12 @@ class _MyApplications extends ConsumerWidget {
         data: (list) {
           if (list.isEmpty) {
             return ListView(
-              children: const [
-                SizedBox(height: 80),
+              children: [
+                const SizedBox(height: 80),
                 EmptyState(
                   icon: Icons.work_outline,
-                  title: 'No applications yet',
-                  message:
-                      'Open Find work, pick a ceremony you can perform, and '
-                      'send the family your quote.',
+                  title: t.noApplicationsYet,
+                  message: t.noApplicationsYetBody,
                 ),
               ],
             );
@@ -124,7 +125,7 @@ class _MyApplications extends ConsumerWidget {
   }
 }
 
-class _ApplicationCard extends StatelessWidget {
+class _ApplicationCard extends ConsumerWidget {
   const _ApplicationCard({required this.application});
 
   final Application application;
@@ -137,7 +138,8 @@ class _ApplicationCard extends StatelessWidget {
       };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final a = application;
 
     return Card(
@@ -155,7 +157,7 @@ class _ApplicationCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      a.jobTitle ?? 'Ceremony #${a.jobId}',
+                      a.jobTitle ?? t.ceremonyNumber(a.jobId),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -173,7 +175,7 @@ class _ApplicationCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
                     child: Text(
-                      a.status.label,
+                      a.status.labelIn(t),
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -186,8 +188,8 @@ class _ApplicationCard extends StatelessWidget {
               const SizedBox(height: Gap.sm),
               Text(
                 [
-                  if (a.quotedFee != null) 'You quoted ${formatMoney(a.quotedFee)}',
-                  'Sent ${timeAgo(a.createdAt)}',
+                  if (a.quotedFee != null) t.youQuoted(formatMoney(a.quotedFee, t)),
+                  t.sentAgo(timeAgo(a.createdAt, t)),
                 ].join('  ·  '),
                 style: const TextStyle(fontSize: 12.5, color: AppColors.inkMuted),
               ),
@@ -200,7 +202,7 @@ class _ApplicationCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Selected — the family\'s contact details are unlocked.',
+                        t.selectedContactUnlocked,
                         style: TextStyle(
                           fontSize: 12.5,
                           color: AppColors.success,

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../data/jobs_repository.dart';
 import '../../data/reference_repository.dart';
@@ -78,10 +79,11 @@ class _JobsFeedViewState extends ConsumerState<JobsFeedView> {
     final jobs = ref.watch(openJobsProvider);
     final rituals = ref.watch(ritualsProvider);
     final filter = ref.watch(jobFilterProvider);
+    final t = ref.watch(stringsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Find work'),
+        title: Text(t.findWork),
         automaticallyImplyLeading: false,
       ),
       body: Column(
@@ -92,12 +94,12 @@ class _JobsFeedViewState extends ConsumerState<JobsFeedView> {
               controller: _search,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Search ceremonies, e.g. Griha Pravesh',
+                hintText: t.searchCeremoniesHint,
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: filter.query.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: 'Clear search',
+                        tooltip: t.clearSearch,
                         icon: const Icon(Icons.close, size: 18),
                         onPressed: () {
                           _debounce?.cancel();
@@ -159,12 +161,9 @@ class _JobsFeedViewState extends ConsumerState<JobsFeedView> {
             orElse: () => const SizedBox.shrink(),
           ),
           if (!session.canSeeJobFeed)
-            const NoticeBanner(
+            NoticeBanner(
               icon: Icons.hourglass_top,
-              message:
-                  'Your purohit listing is awaiting verification. Job posts stay '
-                  'hidden until an admin approves you — this is enforced by the '
-                  'database, so the list below will be empty until then.',
+              message: t.feedAwaitingVerificationBody,
             ),
           // A count plus a one-tap escape hatch. Filters that cannot be seen
           // or undone are the fastest way to make a feed look broken.
@@ -196,17 +195,16 @@ class _JobsFeedViewState extends ConsumerState<JobsFeedView> {
                       child: EmptyState(
                         icon: Icons.inbox_outlined,
                         title: session.canSeeJobFeed
-                            ? 'No open jobs match'
-                            : 'Nothing to show yet',
+                            ? t.noOpenJobsMatch
+                            : t.nothingToShowYet,
                         message: session.canSeeJobFeed
-                            ? 'Try clearing filters, or check back tomorrow.'
-                            : 'Once your listing is verified, ceremonies posted by '
-                                  'families will appear here.',
+                            ? t.noOpenJobsMatchBody
+                            : t.feedLockedBody,
                         action: filter.isEmpty
                             ? null
                             : OutlinedButton(
                                 onPressed: _clearAll,
-                                child: const Text('Clear filters'),
+                                child: Text(t.clearFilters),
                               ),
                       ),
                     );
@@ -241,7 +239,7 @@ class _JobsFeedViewState extends ConsumerState<JobsFeedView> {
   }
 }
 
-class _ResultBar extends StatelessWidget {
+class _ResultBar extends ConsumerWidget {
   const _ResultBar({
     required this.count,
     required this.filtered,
@@ -253,14 +251,15 @@ class _ResultBar extends StatelessWidget {
   final VoidCallback onClear;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.sm, 0),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              count == 1 ? '1 open job' : '$count open jobs',
+              t.openJobsCount(count),
               style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -272,7 +271,7 @@ class _ResultBar extends StatelessWidget {
             TextButton.icon(
               onPressed: onClear,
               icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
-              label: const Text('Clear'),
+              label: Text(t.clearAction),
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.saffronDark,
                 textStyle: const TextStyle(
