@@ -312,4 +312,198 @@ class AppStringsEn extends AppStrings {
   String get errEnterCode => 'Enter the 6-digit code.';
   @override
   String errCodeFailed(String detail) => 'That code did not work. $detail';
+
+  // ---- Jobs ---------------------------------------------------------------
+  @override
+  String get findWork => 'Find work';
+  @override
+  String get searchCeremoniesHint => 'Search ceremonies, e.g. Griha Pravesh';
+  @override
+  String get clearSearch => 'Clear search';
+  @override
+  String get clearFilters => 'Clear filters';
+  @override
+  String get clearAction => 'Clear';
+  @override
+  String openJobsCount(int count) =>
+      count == 1 ? '1 open job' : '$count open jobs';
+  @override
+  String get feedAwaitingVerificationBody =>
+      'Your purohit listing is awaiting verification. Job posts stay '
+      'hidden until an admin approves you \u2014 this is enforced by the '
+      'database, so the list below will be empty until then.';
+  @override
+  String get noOpenJobsMatch => 'No open jobs match';
+  @override
+  String get nothingToShowYet => 'Nothing to show yet';
+  @override
+  String get noOpenJobsMatchBody =>
+      'Try clearing filters, or check back tomorrow.';
+  @override
+  String get feedLockedBody =>
+      'Once your listing is verified, ceremonies posted by families will '
+      'appear here.';
+
+  @override
+  String get urgent => 'Urgent';
+  @override
+  String postedAgo(String ago) => 'Posted $ago';
+
+  @override
+  String get ceremony => 'Ceremony';
+  @override
+  String get notVisibleToYou => 'Not visible to you';
+  @override
+  String get notVisibleToYouBody =>
+      'This ceremony either no longer exists, or row-level security does not '
+      'grant you access to it.';
+  @override
+  String get budget => 'Budget';
+  @override
+  String get dateLabel => 'Date';
+  @override
+  String get locationLabel => 'Location';
+  @override
+  String get urgencyLabel => 'Urgency';
+  @override
+  String get detailsLabel => 'Details';
+  @override
+  String get applicationsLabel => 'Applications';
+  @override
+  String get noApplicantsYet =>
+      'No purohit has applied yet. Verified purohits see your post in their '
+      'feed.';
+  @override
+  String couldNotOpenChat(String detail) => 'Could not open chat: $detail';
+  @override
+  String get thisPurohit => 'this purohit';
+  @override
+  String get confirmPurohitTitle => 'Confirm purohit';
+  @override
+  String confirmPurohitBody(String name) =>
+      'Select $name for this ceremony?\n\n'
+      'Every other applicant is marked not selected, the ceremony moves to '
+      '"Purohit selected", and contact details are exchanged. This cannot be '
+      'undone from the app.';
+  @override
+  String get cancelAction => 'Cancel';
+  @override
+  String get confirmAction => 'Confirm';
+  @override
+  String purohitConfirmed(String name) => '$name is confirmed for this ceremony.';
+  @override
+  String couldNotConfirm(String detail) => 'Could not confirm: $detail';
+  @override
+  String get purohitFallbackName => 'Purohit';
+  @override
+  String yearsShort(int years) => '$years yrs';
+  @override
+  String get noAmountQuoted => 'No amount quoted';
+  @override
+  String quotedAmount(String amount) => 'Quoted $amount';
+  @override
+  String get messageAction => 'Message';
+  @override
+  String get selectAction => 'Select';
+  @override
+  String get applicationSent => 'Application sent.';
+  @override
+  String get ctaVerificationPending => 'Verification pending';
+  @override
+  String get ctaClosed => 'Closed';
+  @override
+  String get ctaApplied => 'Applied';
+  @override
+  String get ctaApply => 'Apply';
+  @override
+  String get sendYourQuote => 'Send your quote';
+  @override
+  String get yourFeeLabel => 'Your fee (\u20B9)';
+  @override
+  String get feeHintExample => 'e.g. 5100';
+  @override
+  String get messageToFamily => 'Message to the family';
+  @override
+  String get messageToFamilyHint =>
+      'Which sampradaya you follow, what is included\u2026';
+  @override
+  String get sendApplication => 'Send application';
+
+  @override
+  String get myApplications => 'My applications';
+  @override
+  String get myCeremonies => 'My ceremonies';
+  @override
+  String get nothingPostedYet => 'Nothing posted yet';
+  @override
+  String get nothingPostedYetBody =>
+      'Post a ceremony from the Post tab. Verified purohits in your city will '
+      'see it and send you their quotes.';
+  @override
+  String get noApplicationsYet => 'No applications yet';
+  @override
+  String get noApplicationsYetBody =>
+      'Open Find work, pick a ceremony you can perform, and send the family '
+      'your quote.';
+  @override
+  String ceremonyNumber(int id) => 'Ceremony #$id';
+  @override
+  String youQuoted(String amount) => 'You quoted $amount';
+  @override
+  String sentAgo(String ago) => 'Sent $ago';
+  @override
+  String get selectedContactUnlocked =>
+      'Selected \u2014 the family\u2019s contact details are unlocked.';
+
+  // ---- Enum labels --------------------------------------------------------
+  @override
+  String get urgencyFlexible => 'Flexible date';
+  @override
+  String get urgencyScheduled => 'Scheduled';
+  @override
+  String get urgencyImmediate => 'Immediate';
+  @override
+  String get jobStatusOpen => 'Open';
+  @override
+  String get jobStatusAssigned => 'Purohit selected';
+  @override
+  String get jobStatusCompleted => 'Completed';
+  @override
+  String get jobStatusCancelled => 'Cancelled';
+  @override
+  String get appStatusApplied => 'Applied';
+  @override
+  String get appStatusShortlisted => 'Shortlisted';
+  @override
+  String get appStatusSelected => 'Selected';
+  @override
+  String get appStatusRejected => 'Not selected';
+  @override
+  String get appStatusWithdrawn => 'Withdrawn';
+
+  // ---- Money, dates, relative time ---------------------------------------
+  @override
+  String get notSpecified => 'Not specified';
+  @override
+  String get openToQuotes => 'Open to quotes';
+  @override
+  String get justNow => 'just now';
+  @override
+  String minutesAgo(int n) => '$n minute${n == 1 ? '' : 's'} ago';
+  @override
+  String hoursAgo(int n) => '$n hour${n == 1 ? '' : 's'} ago';
+  @override
+  String daysAgo(int n) => '$n day${n == 1 ? '' : 's'} ago';
+  @override
+  String monthsAgo(int n) => '$n month${n == 1 ? '' : 's'} ago';
+  @override
+  String yearsAgo(int n) => '$n year${n == 1 ? '' : 's'} ago';
+  @override
+  String get datePassed => 'Date passed';
+  @override
+  String get todayLabel => 'Today';
+  @override
+  String get tomorrowLabel => 'Tomorrow';
+  @override
+  String inDaysLabel(int days) => 'In $days days';
 }

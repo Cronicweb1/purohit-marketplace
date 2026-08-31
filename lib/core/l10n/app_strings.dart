@@ -12,9 +12,11 @@ import 'strings_hi.dart';
 /// string means you cannot forget to.
 ///
 /// Scope note: the landing page, role gate, all sign-in screens, the bottom
-/// navigation and the profile screen are translated. Ritual/ceremony content
-/// (`ceremony_lore.dart`) and the long purohit registration form are still
-/// English and are tracked as follow-up work.
+/// navigation, the profile screen, the jobs feed, the ceremony detail screen
+/// and My work are translated. Ritual/ceremony content (`ceremony_lore.dart`)
+/// and the long purohit registration form are still English and are tracked
+/// as follow-up work. Ritual names themselves come from the `rituals` table
+/// and stay transliterated Sanskrit in every language.
 abstract class AppStrings {
   const AppStrings();
 
@@ -164,4 +166,102 @@ abstract class AppStrings {
   String get errEnterPassword;
   String get errEnterCode;
   String errCodeFailed(String detail);
+
+  // ---- Jobs: feed, card, detail, my work ---------------------------------
+  // Everything a purohit reads while deciding whether to bid, plus the
+  // family-side applicant review. These are the highest-traffic screens in
+  // the app, so they are translated even though the copy is long.
+  String get findWork;
+  String get searchCeremoniesHint;
+  String get clearSearch;
+  String get clearFilters;
+  String get clearAction;
+  String openJobsCount(int count);
+  String get feedAwaitingVerificationBody;
+  String get noOpenJobsMatch;
+  String get nothingToShowYet;
+  String get noOpenJobsMatchBody;
+  String get feedLockedBody;
+
+  String get urgent;
+  String postedAgo(String ago);
+
+  String get ceremony;
+  String get notVisibleToYou;
+  String get notVisibleToYouBody;
+  String get budget;
+  String get dateLabel;
+  String get locationLabel;
+  String get urgencyLabel;
+  String get detailsLabel;
+  String get applicationsLabel;
+  String get noApplicantsYet;
+  String couldNotOpenChat(String detail);
+  String get thisPurohit;
+  String get confirmPurohitTitle;
+  String confirmPurohitBody(String name);
+  String get cancelAction;
+  String get confirmAction;
+  String purohitConfirmed(String name);
+  String couldNotConfirm(String detail);
+  String get purohitFallbackName;
+  String yearsShort(int years);
+  String get noAmountQuoted;
+  String quotedAmount(String amount);
+  String get messageAction;
+  String get selectAction;
+  String get applicationSent;
+  String get ctaVerificationPending;
+  String get ctaClosed;
+  String get ctaApplied;
+  String get ctaApply;
+  String get sendYourQuote;
+  String get yourFeeLabel;
+  String get feeHintExample;
+  String get messageToFamily;
+  String get messageToFamilyHint;
+  String get sendApplication;
+
+  String get myApplications;
+  String get myCeremonies;
+  String get nothingPostedYet;
+  String get nothingPostedYetBody;
+  String get noApplicationsYet;
+  String get noApplicationsYetBody;
+  String ceremonyNumber(int id);
+  String youQuoted(String amount);
+  String sentAgo(String ago);
+  String get selectedContactUnlocked;
+
+  // ---- Enum labels -------------------------------------------------------
+  // The models keep an English `.label` for logs and debugging; the widget
+  // layer renders these instead. See `enum_labels.dart`.
+  String get urgencyFlexible;
+  String get urgencyScheduled;
+  String get urgencyImmediate;
+  String get jobStatusOpen;
+  String get jobStatusAssigned;
+  String get jobStatusCompleted;
+  String get jobStatusCancelled;
+  String get appStatusApplied;
+  String get appStatusShortlisted;
+  String get appStatusSelected;
+  String get appStatusRejected;
+  String get appStatusWithdrawn;
+
+  // ---- Money, dates, relative time --------------------------------------
+  // Consumed by `core/format.dart`, which takes an optional AppStrings and
+  // falls back to English so the pure-function tests keep working.
+  String get notSpecified;
+  String get openToQuotes;
+  String get justNow;
+  String minutesAgo(int n);
+  String hoursAgo(int n);
+  String daysAgo(int n);
+  String monthsAgo(int n);
+  String yearsAgo(int n);
+  String get datePassed;
+  String get todayLabel;
+  String get tomorrowLabel;
+  String inDaysLabel(int days);
 }

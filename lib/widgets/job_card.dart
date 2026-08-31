@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/format.dart';
+import '../core/l10n/enum_labels.dart';
+import '../core/l10n/locale_controller.dart';
 import '../models/job.dart';
 import '../theme/app_theme.dart';
 import 'feedback.dart';
@@ -11,7 +14,7 @@ import 'feedback.dart';
 /// Ordering is deliberate: title, then the two facts that decide whether a
 /// purohit taps (money and date), then location, then a two-line teaser.
 /// Everything else is noise on a scroll surface.
-class JobCard extends StatelessWidget {
+class JobCard extends ConsumerWidget {
   const JobCard({super.key, required this.job, this.onTap, this.showStatus = false});
 
   final Job job;
@@ -19,7 +22,8 @@ class JobCard extends StatelessWidget {
   final bool showStatus;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     return PressScale(
       enabled: onTap != null,
       child: Card(
@@ -52,16 +56,16 @@ class JobCard extends StatelessWidget {
                     ),
                   ),
                   if (job.urgency == JobUrgency.immediate)
-                    const _Pill(text: 'Urgent', color: AppColors.maroon),
+                    _Pill(text: t.urgent, color: AppColors.maroon),
                   if (showStatus && job.status != JobStatus.open) ...[
                     const SizedBox(width: Gap.xs),
-                    _Pill(text: job.status.label, color: AppColors.inkMuted),
+                    _Pill(text: job.status.labelIn(t), color: AppColors.inkMuted),
                   ],
                 ],
               ),
               const SizedBox(height: Gap.xs),
               Text(
-                'Posted ${timeAgo(job.createdAt)}',
+                t.postedAgo(timeAgo(job.createdAt, t)),
                 style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
               ),
               const SizedBox(height: Gap.md),
@@ -69,7 +73,7 @@ class JobCard extends StatelessWidget {
                 children: [
                   _Fact(
                     icon: Icons.currency_rupee,
-                    label: formatBudget(job.budget),
+                    label: formatBudget(job.budget, t),
                     strong: true,
                   ),
                   const SizedBox(width: Gap.lg),

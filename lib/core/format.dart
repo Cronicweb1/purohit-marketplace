@@ -1,27 +1,38 @@
 import 'package:intl/intl.dart';
 
+import 'l10n/app_strings.dart';
+import 'l10n/strings_en.dart';
+
 /// Indian-locale money. Renders 250000 as "₹2,50,000" (lakh grouping), which is
 /// what an Indian user expects — `en_US` would render "₹250,000".
+///
+/// Note: the digits and the lakh grouping are correct for Hindi too, so the
+/// number format itself is never swapped — only the surrounding words are.
 final _rupees = NumberFormat.currency(
   locale: 'en_IN',
   symbol: '\u20B9',
   decimalDigits: 0,
 );
 
-String formatMoney(num? amount) {
-  if (amount == null) return 'Not specified';
+/// Every helper below takes an optional [AppStrings]. Passing nothing keeps the
+/// original English output, which is what the unit tests (and any non-UI
+/// caller) rely on; UI call sites pass `ref.watch(stringsProvider)`.
+String formatMoney(num? amount, [AppStrings? t]) {
+  if (amount == null) return (t ?? const AppStringsEn()).notSpecified;
   return _rupees.format(amount);
 }
 
 /// "Budget" on a job card. Families often leave it blank on purpose.
-String formatBudget(num? amount) {
-  if (amount == null) return 'Open to quotes';
-  return formatMoney(amount);
+String formatBudget(num? amount, [AppStrings? t]) {
+  if (amount == null) return (t ?? const AppStringsEn()).openToQuotes;
+  return formatMoney(amount, t);
 }
 
 final _dayMonth = DateFormat('d MMM');
 final _dayMonthYear = DateFormat('d MMM yyyy');
 
+/// Dates stay in `d MMM` form in both languages: a Devanagari month name needs
+/// `initializeDateFormatting('hi')` at startup, which is a separate change.
 String formatDate(DateTime? d) {
   if (d == null) return '';
   return d.year == DateTime.now().year ? _dayMonth.format(d) : _dayMonthYear.format(d);
@@ -46,35 +57,30 @@ String formatDateRange(DateTime start, DateTime? end) {
 
 /// Upwork-style "Posted 3 hours ago". Deliberately coarse — precision here is
 /// noise, and it avoids pulling in another package.
-String timeAgo(DateTime when) {
+String timeAgo(DateTime when, [AppStrings? t]) {
+  final s = t ?? const AppStringsEn();
   final diff = DateTime.now().difference(when);
 
-  if (diff.inSeconds < 60) return 'just now';
-  if (diff.inMinutes < 60) {
-    return '${diff.inMinutes} minute${diff.inMinutes == 1 ? '' : 's'} ago';
-  }
-  if (diff.inHours < 24) {
-    return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
-  }
-  if (diff.inDays < 30) {
-    return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
-  }
+  if (diff.inSeconds < 60) return s.justNow;
+  if (diff.inMinutes < 60) return s.minutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return s.hoursAgo(diff.inHours);
+  if (diff.inDays < 30) return s.daysAgo(diff.inDays);
   final months = diff.inDays ~/ 30;
-  if (months < 12) return '$months month${months == 1 ? '' : 's'} ago';
-  final years = diff.inDays ~/ 365;
-  return '$years year${years == 1 ? '' : 's'} ago';
+  if (months < 12) return s.monthsAgo(months);
+  return s.yearsAgo(diff.inDays ~/ 365);
 }
 
 /// Days until a ritual. Negative means the date has passed.
-String daysUntil(DateTime date) {
+String daysUntil(DateTime date, [AppStrings? t]) {
+  final s = t ?? const AppStringsEn();
   final today = DateTime.now();
   final d = DateTime(date.year, date.month, date.day)
       .difference(DateTime(today.year, today.month, today.day))
       .inDays;
-  if (d < 0) return 'Date passed';
-  if (d == 0) return 'Today';
-  if (d == 1) return 'Tomorrow';
-  return 'In $d days';
+  if (d < 0) return s.datePassed;
+  if (d == 0) return s.todayLabel;
+  if (d == 1) return s.tomorrowLabel;
+  return s.inDaysLabel(d);
 }
 
 String initialsOf(String name) {

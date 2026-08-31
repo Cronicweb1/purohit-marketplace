@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
+import '../../core/l10n/enum_labels.dart';
+import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../data/applications_repository.dart';
 import '../../data/jobs_repository.dart';
@@ -23,10 +25,11 @@ class JobDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final job = ref.watch(jobDetailProvider(jobId));
     final session = ref.watch(sessionProvider);
+    final t = ref.watch(stringsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ceremony'),
+        title: Text(t.ceremony),
         // This route sits on the root navigator, so it can be reached either by
         // a push (back pops) or by a go (nothing to pop - fall back to the
         // list the user most likely came from).
@@ -49,12 +52,10 @@ class JobDetailPage extends ConsumerWidget {
         ),
         data: (j) {
           if (j == null) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.visibility_off_outlined,
-              title: 'Not visible to you',
-              message:
-                  'This ceremony either no longer exists, or row-level security '
-                  'does not grant you access to it.',
+              title: t.notVisibleToYou,
+              message: t.notVisibleToYouBody,
             );
           }
           return _JobBody(job: j, isPurohit: session.isPurohit);
@@ -79,6 +80,7 @@ class _JobBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     return ListView(
       padding: const EdgeInsets.all(Gap.lg),
       children: [
@@ -88,45 +90,45 @@ class _JobBody extends ConsumerWidget {
         ),
         const SizedBox(height: Gap.sm),
         Text(
-          'Posted ${timeAgo(job.createdAt)}',
+          t.postedAgo(timeAgo(job.createdAt, t)),
           style: const TextStyle(fontSize: 12.5, color: AppColors.inkFaint),
         ),
         const SizedBox(height: Gap.xl),
         _FactRow(
           icon: Icons.currency_rupee,
-          label: 'Budget',
-          value: formatBudget(job.budget),
+          label: t.budget,
+          value: formatBudget(job.budget, t),
         ),
         _FactRow(
           icon: Icons.event,
-          label: 'Date',
+          label: t.dateLabel,
           value: '${formatDateRange(job.startDate, job.endDate)}'
-              '  ·  ${daysUntil(job.startDate)}',
+              '  ·  ${daysUntil(job.startDate, t)}',
         ),
         if (job.ritualName != null)
           _FactRow(
             icon: Icons.auto_awesome,
-            label: 'Ceremony',
+            label: t.ceremony,
             value: job.ritualName!,
           ),
         if (job.cityName != null)
           _FactRow(
             icon: Icons.location_on_outlined,
-            label: 'Location',
+            label: t.locationLabel,
             value: [job.cityName, job.cityState]
                 .whereType<String>()
                 .join(', '),
           ),
         _FactRow(
           icon: Icons.flag_outlined,
-          label: 'Urgency',
-          value: job.urgency.label,
+          label: t.urgencyLabel,
+          value: job.urgency.labelIn(t),
         ),
         if ((job.description ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: Gap.xl),
-          const Text(
-            'Details',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          Text(
+            t.detailsLabel,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Gap.sm),
           Text(
@@ -136,9 +138,9 @@ class _JobBody extends ConsumerWidget {
         ],
         if (!isPurohit) ...[
           const SizedBox(height: Gap.xxl),
-          const Text(
-            'Applications',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          Text(
+            t.applicationsLabel,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Gap.sm),
           _Applicants(job: job),
@@ -157,6 +159,7 @@ class _Applicants extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(jobApplicationsProvider(job.id));
+    final t = ref.watch(stringsProvider);
 
     return apps.when(
       loading: () => const TileSkeletonColumn(count: 2, padding: EdgeInsets.zero),
@@ -166,10 +169,13 @@ class _Applicants extends ConsumerWidget {
       ),
       data: (list) {
         if (list.isEmpty) {
-          return const Text(
-            'No purohit has applied yet. Verified purohits see your post in '
-            'their feed.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.inkMuted, height: 1.4),
+          return Text(
+            t.noApplicantsYet,
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: AppColors.inkMuted,
+              height: 1.4,
+            ),
           );
         }
         return Column(
@@ -209,7 +215,7 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open chat: $e')),
+        SnackBar(content: Text(ref.read(stringsProvider).couldNotOpenChat('$e'))),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -218,27 +224,23 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
 
   Future<void> _finalize() async {
     if (_busy) return;
+    final t = ref.read(stringsProvider);
     final a = widget.application;
-    final name = a.panditName ?? 'this purohit';
+    final name = a.panditName ?? t.thisPurohit;
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm purohit'),
-        content: Text(
-          'Select $name for this ceremony?\n\n'
-          'Every other applicant is marked not selected, the ceremony moves to '
-          '"Purohit selected", and contact details are exchanged. This cannot '
-          'be undone from the app.',
-        ),
+        title: Text(t.confirmPurohitTitle),
+        content: Text(t.confirmPurohitBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(t.cancelAction),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Confirm'),
+            child: Text(t.confirmAction),
           ),
         ],
       ),
@@ -256,12 +258,12 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
       ref.invalidate(myJobsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$name is confirmed for this ceremony.')),
+        SnackBar(content: Text(t.purohitConfirmed(name))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not confirm: $e')),
+        SnackBar(content: Text(t.couldNotConfirm('$e'))),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -270,6 +272,7 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
     final a = widget.application;
     final canFinalize = widget.job.status == JobStatus.open &&
         a.status != ApplicationStatus.withdrawn &&
@@ -289,7 +292,7 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   UserAvatar(
-                    name: a.panditName ?? 'Purohit',
+                    name: a.panditName ?? t.purohitFallbackName,
                     imageUrl: a.panditAvatarUrl,
                   ),
                   const SizedBox(width: Gap.md),
@@ -298,7 +301,7 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          a.panditName ?? 'Purohit',
+                          a.panditName ?? t.purohitFallbackName,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
@@ -308,8 +311,8 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
                         Text(
                           [
                             if (a.panditExperienceYears != null)
-                              '${a.panditExperienceYears} yrs',
-                            a.status.label,
+                              t.yearsShort(a.panditExperienceYears!),
+                            a.status.labelIn(t),
                           ].join(' · '),
                           style: const TextStyle(
                             fontSize: 12.5,
@@ -348,8 +351,8 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
                     const SizedBox(width: Gap.sm),
                     Text(
                       a.quotedFee == null
-                          ? 'No amount quoted'
-                          : 'Quoted ${formatMoney(a.quotedFee)}',
+                          ? t.noAmountQuoted
+                          : t.quotedAmount(formatMoney(a.quotedFee, t)),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13.5,
@@ -373,7 +376,7 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
                     child: OutlinedButton.icon(
                       onPressed: _busy ? null : _openChat,
                       icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: const Text('Message'),
+                      label: Text(t.messageAction),
                     ),
                   ),
                   if (canFinalize) ...[
@@ -382,7 +385,7 @@ class _ApplicantTileState extends ConsumerState<_ApplicantTile> {
                       child: FilledButton.icon(
                         onPressed: _busy ? null : _finalize,
                         icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text('Select'),
+                        label: Text(t.selectAction),
                       ),
                     ),
                   ],
@@ -463,7 +466,7 @@ class _ApplyBar extends ConsumerWidget {
       ref.invalidate(myApplicationsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Application sent.')),
+          SnackBar(content: Text(ref.read(stringsProvider).applicationSent)),
         );
       }
     }
@@ -471,6 +474,7 @@ class _ApplyBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
     final applied = ref.watch(hasAppliedProvider(job.id));
     final already = applied.asData?.value ?? false;
     final closed = job.status != JobStatus.open;
@@ -478,16 +482,16 @@ class _ApplyBar extends ConsumerWidget {
     final String label;
     final VoidCallback? onPressed;
     if (!canApply) {
-      label = 'Verification pending';
+      label = t.ctaVerificationPending;
       onPressed = null;
     } else if (closed) {
-      label = 'Closed';
+      label = t.ctaClosed;
       onPressed = null;
     } else if (already) {
-      label = 'Applied';
+      label = t.ctaApplied;
       onPressed = null;
     } else {
-      label = 'Apply';
+      label = t.ctaApply;
       onPressed = () => _openSheet(context, ref);
     }
 
@@ -542,6 +546,7 @@ class _ApplySheetState extends ConsumerState<_ApplySheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
     return Padding(
       padding: EdgeInsets.only(
         left: Gap.lg,
@@ -553,28 +558,28 @@ class _ApplySheetState extends ConsumerState<_ApplySheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Send your quote',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          Text(
+            t.sendYourQuote,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Gap.lg),
-          const Text('Your fee (₹)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(t.yourFeeLabel,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: Gap.sm),
           TextField(
             controller: widget.feeCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: 'e.g. 5100'),
+            decoration: InputDecoration(hintText: t.feeHintExample),
           ),
           const SizedBox(height: Gap.lg),
-          const Text('Message to the family',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(t.messageToFamily,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: Gap.sm),
           TextField(
             controller: widget.msgCtrl,
             maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: 'Which sampradaya you follow, what is included…',
+            decoration: InputDecoration(
+              hintText: t.messageToFamilyHint,
             ),
           ),
           if (_error != null) ...[
@@ -594,7 +599,7 @@ class _ApplySheetState extends ConsumerState<_ApplySheet> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Send application'),
+                : Text(t.sendApplication),
           ),
         ],
       ),
