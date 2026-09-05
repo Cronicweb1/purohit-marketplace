@@ -11,9 +11,10 @@ import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
 
 class VerifyOtpPage extends ConsumerStatefulWidget {
-  const VerifyOtpPage({super.key, required this.email});
+  const VerifyOtpPage({super.key, required this.email, this.type = OtpType.email});
 
   final String email;
+  final OtpType type;
 
   @override
   ConsumerState<VerifyOtpPage> createState() => _VerifyOtpPageState();
@@ -44,7 +45,7 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
 
     try {
       await supabase.auth.verifyOTP(
-        type: OtpType.email,
+        type: widget.type,
         email: widget.email,
         token: token,
       );
@@ -74,7 +75,14 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
 
   Future<void> _resend() async {
     try {
-      await supabase.auth.signInWithOtp(email: widget.email);
+      if (widget.type == OtpType.signup) {
+        await supabase.auth.resend(
+          type: OtpType.signup,
+          email: widget.email,
+        );
+      } else {
+        await supabase.auth.signInWithOtp(email: widget.email);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('New code sent.')));

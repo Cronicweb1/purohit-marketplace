@@ -116,17 +116,17 @@ class _RoleRegisterPageState extends ConsumerState<RoleRegisterPage> {
         return;
       }
 
-      // Signup signs the account in immediately. The brief asks for
-      // register -> login -> home, so hand the session back straight away.
-      await ref.read(sessionProvider.notifier).signOut();
+      // With email confirmation enabled, signup returns a user without a
+      // session. Send the new account to the shared OTP screen so the email
+      // address is verified before the account can enter the app.
+      if (res.session == null) {
+        if (!mounted) return;
+        context.go('/verify?email=${Uri.encodeComponent(email)}&type=signup');
+        return;
+      }
 
       if (!mounted) return;
-      showAppSnack(
-        context,
-        'Account created. Sign in to continue.',
-        tone: SnackTone.success,
-      );
-      context.go('/login/$_slug');
+      context.go('/');
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {

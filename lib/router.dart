@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/session.dart';
 import 'features/admin/admin_page.dart';
@@ -136,8 +137,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/sign-in', builder: (_, __) => const SignInPage()),
       GoRoute(
         path: '/verify',
-        builder: (_, state) =>
-            VerifyOtpPage(email: state.uri.queryParameters['email'] ?? ''),
+        builder: (_, state) => VerifyOtpPage(
+          email: state.uri.queryParameters['email'] ?? '',
+          type: state.uri.queryParameters['type'] == 'signup'
+              ? OtpType.signup
+              : OtpType.email,
+        ),
       ),
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
       GoRoute(

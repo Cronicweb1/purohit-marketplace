@@ -133,9 +133,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       _rememberIntent();
       if (!mounted) return;
       if (res.session == null) {
-        // Only happens if email confirmation gets switched back on.
-        setState(() => _error =
-            'Account created. Confirm your email address, then sign in.');
+        context.go(
+          '/verify?email=${Uri.encodeComponent(_email.text.trim())}&type=signup',
+        );
         return;
       }
       context.go('/');
