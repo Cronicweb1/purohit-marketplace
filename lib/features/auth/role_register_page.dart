@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/session.dart';
 import '../../core/supabase_providers.dart';
 import '../../models/profile.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/feedback.dart';
 
 /// Registration for one specific side of the marketplace.
 ///
