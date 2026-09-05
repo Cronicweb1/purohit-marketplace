@@ -13,6 +13,7 @@ import 'features/auth/verify_otp_page.dart';
 import 'features/jobs/job_detail_page.dart';
 import 'features/jobs/jobs_feed_page.dart';
 import 'features/jobs/my_work_page.dart';
+import 'features/jobs/purohit_jobs_page.dart';
 import 'features/jobs/post_job_page.dart';
 import 'features/landing/landing_page.dart';
 import 'features/landing/role_gate_page.dart';
@@ -211,6 +212,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           // contract documented above holds.
           StatefulShellBranch(routes: [
             GoRoute(path: '/messages', builder: (_, __) => const MessagesPage()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/purohit-jobs',
+              builder: (_, __) => const PurohitJobsPage(),
+            ),
           ]),
         ],
       ),

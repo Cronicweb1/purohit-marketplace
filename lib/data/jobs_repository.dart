@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/supabase_providers.dart';
 import '../models/job.dart';
+import '../models/application.dart';
+import 'applications_repository.dart';
 
 const _jobSelect =
     'id, title, description, start_date, end_date, created_at, urgency, '
@@ -152,3 +154,17 @@ final myJobsProvider =
 final jobDetailProvider = FutureProvider.family<Job?, int>(
   (ref, id) => ref.watch(jobsRepositoryProvider).byId(id),
 );
+
+
+/// Jobs where the signed-in purohit was selected. The page intentionally derives
+/// this from the application status, so a job cannot appear here merely because
+/// it was viewed or applied to; it enters this list only after selection.
+final purohitJobsProvider = FutureProvider<List<Job>>((ref) async {
+  final applications = await ref.watch(myApplicationsProvider.future);
+  final selected = applications
+      .where((application) => application.status == ApplicationStatus.selected)
+      .toList();
+  final repository = ref.watch(jobsRepositoryProvider);
+  final jobs = await Future.wait(selected.map((a) => repository.byId(a.jobId)));
+  return jobs.whereType<Job>().toList();
+});

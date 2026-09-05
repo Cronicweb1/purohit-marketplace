@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
 import '../../widgets/user_avatar.dart';
+import '../shell/home_shell.dart';
 
 /// Inbox. Shown to both roles, which is why it is an unconditional shell
 /// branch - a tab that appears for one role and not the other would shift every
@@ -26,6 +27,7 @@ class MessagesPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Messages'),
         automaticallyImplyLeading: false,
+        leading: const ShellProfileButton(),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -77,12 +79,46 @@ class MessagesPage extends ConsumerWidget {
                       c.counterpartName(uid),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    subtitle: Text(
-                      c.jobTitle ?? 'Ceremony',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.inkMuted),
-                    ),
+                    subtitle: count == 1
+                        ? Consumer(
+                            builder: (context, ref, _) {
+                              final messages = ref.watch(
+                                conversationMessagesProvider(c.id),
+                              );
+                              return messages.maybeWhen(
+                                data: (items) {
+                                  final unreadMessage = items.reversed
+                                      .where((m) => m.readAt == null)
+                                      .firstWhere(
+                                        (m) => !m.isMine(uid),
+                                        orElse: () => items.isEmpty ? null : items.last,
+                                      );
+                                  return Text(
+                                    unreadMessage?.body ?? c.jobTitle ?? 'Ceremony',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.inkMuted,
+                                    ),
+                                  );
+                                },
+                                orElse: () => Text(
+                                  c.jobTitle ?? 'Ceremony',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.inkMuted,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Text(
+                            c.jobTitle ?? 'Ceremony',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: AppColors.inkMuted),
+                          ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -94,7 +130,7 @@ class MessagesPage extends ConsumerWidget {
                             color: AppColors.inkFaint,
                           ),
                         ),
-                        if (count > 0) ...[
+                        if (count > 1) ...[
                           const SizedBox(height: Gap.xs),
                           Container(
                             padding: const EdgeInsets.symmetric(

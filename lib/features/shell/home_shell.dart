@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n/locale_controller.dart';
 import '../../core/session.dart';
 import '../../data/messages_repository.dart';
+import '../../widgets/user_avatar.dart';
 
 /// The tab shell.
 ///
@@ -24,6 +25,8 @@ class HomeShell extends ConsumerWidget {
   //   1 = /my-work (my jobs for family, my applications for purohit)
   //   2 = /post (family only)
   //   3 = /profile
+  //   4 = /messages
+  //   5 = /purohit-jobs (accepted/current/past jobs for purohit)
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
@@ -55,18 +58,19 @@ class HomeShell extends ConsumerWidget {
           selectedIcon: Icons.add_circle,
           label: t.navPost,
         ),
+      if (isPurohit)
+        _Dest(
+          branch: 5,
+          icon: Icons.work_history_outlined,
+          selectedIcon: Icons.work_history,
+          label: t.navMyJobs,
+        ),
       _Dest(
         branch: 4,
         icon: Icons.chat_bubble_outline,
         selectedIcon: Icons.chat_bubble,
         label: t.navMessages,
         badge: unread == 0 ? null : '$unread',
-      ),
-      _Dest(
-        branch: 3,
-        icon: Icons.person_outline,
-        selectedIcon: Icons.person,
-        label: t.navProfile,
       ),
     ];
 
@@ -122,4 +126,32 @@ class _Dest {
 
   /// Unread count, already formatted. Null hides the badge entirely.
   final String? badge;
+}
+
+
+/// Compact profile access used by every main shell page. The profile is no
+/// longer a bottom-navigation destination; the user's avatar is the persistent
+/// top-left entry point instead.
+class ShellProfileButton extends ConsumerWidget {
+  const ShellProfileButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(sessionProvider).profile;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, right: 4),
+      child: Tooltip(
+        message: 'Profile',
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => context.push('/profile'),
+          child: UserAvatar(
+            name: profile?.fullName ?? 'Profile',
+            imageUrl: profile?.avatarUrl,
+            radius: 18,
+          ),
+        ),
+      ),
+    );
+  }
 }

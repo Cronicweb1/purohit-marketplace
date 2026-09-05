@@ -14,6 +14,7 @@ import '../../widgets/job_card.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
 import '../rituals/rituals_page.dart';
+import '../shell/home_shell.dart';
 
 /// Branch 0. Same tab, different content per role — a family browses ceremonies
 /// and purohits, a purohit browses open jobs.
@@ -85,6 +86,7 @@ class _JobsFeedViewState extends ConsumerState<JobsFeedView> {
       appBar: AppBar(
         title: Text(t.findWork),
         automaticallyImplyLeading: false,
+        leading: const ShellProfileButton(),
       ),
       body: Column(
         children: [

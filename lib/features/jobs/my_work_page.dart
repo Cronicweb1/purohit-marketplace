@@ -13,6 +13,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/job_card.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/states.dart';
+import '../shell/home_shell.dart';
 
 /// Branch 1 of the shell. Means two different things depending on the role:
 /// a family sees the ceremonies they posted, a purohit sees the jobs they bid on.
@@ -29,6 +30,7 @@ class MyWorkPage extends ConsumerWidget {
       appBar: AppBar(
         title: Text(isPurohit ? t.myApplications : t.myCeremonies),
         automaticallyImplyLeading: false,
+        leading: const ShellProfileButton(),
       ),
       body: isPurohit ? const _MyApplications() : const _MyJobs(),
     );

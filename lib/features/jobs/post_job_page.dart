@@ -10,6 +10,7 @@ import '../../models/job.dart';
 import '../../models/ritual.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/pickers.dart';
+import '../shell/home_shell.dart';
 
 class PostJobPage extends ConsumerStatefulWidget {
   const PostJobPage({super.key, this.initialRitualId});
@@ -146,6 +147,7 @@ class _PostJobPageState extends ConsumerState<PostJobPage> {
       appBar: AppBar(
         title: const Text('Post a ceremony'),
         automaticallyImplyLeading: false,
+        leading: const ShellProfileButton(),
       ),
       body: Form(
         key: _formKey,
