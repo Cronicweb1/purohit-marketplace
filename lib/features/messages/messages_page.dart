@@ -87,14 +87,14 @@ class MessagesPage extends ConsumerWidget {
                               );
                               return messages.maybeWhen(
                                 data: (items) {
-                                  final unreadMessage = items.reversed
-                                      .where((m) => m.readAt == null)
-                                      .firstWhere(
-                                        (m) => !m.isMine(uid),
-                                        orElse: () => items.isEmpty ? null : items.last,
-                                      );
+                                  final unreadMessages = items.reversed
+                                      .where((m) => !m.isMine(uid) && m.readAt == null)
+                                      .toList();
+                                  final preview = unreadMessages.isNotEmpty
+                                      ? unreadMessages.first.body
+                                      : (items.isNotEmpty ? items.last.body : null);
                                   return Text(
-                                    unreadMessage?.body ?? c.jobTitle ?? 'Ceremony',
+                                    preview ?? c.jobTitle ?? 'Ceremony',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
